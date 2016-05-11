@@ -1,0 +1,30 @@
+{
+  "name": "wowshuxkluh",
+  "version": "0.0.0",
+  "homepage": "https://github.com/animist-io/wowshuxkluh",
+  "description": "Ionic Libraries for Animist.js",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "javascript",
+    "animist.io",
+    "iot",
+    "ethereum",
+    "ionic.js"
+  ],
+  "authors": [
+    "cgewecke"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-mocks": "~1.5.5"
+  }
+}

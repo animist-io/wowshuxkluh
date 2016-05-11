@@ -1,0 +1,31 @@
+{
+  "name": "wowshuxkluh",
+  "version": "1.0.0",
+  "description": "Ionic Libraries for Animist",
+  "main": "karma.conf.js",
+  "dependencies": {
+    "gulp": "^3.9.1",
+    "jasmine-core": "^2.4.1",
+    "jquery": "^2.2.3",
+    "karma": "^0.13.22",
+    "karma-chrome-launcher": "^1.0.1",
+    "karma-cli": "^1.0.0",
+    "karma-jasmine": "^0.2.2",
+    "karma-mocha-reporter": "^2.0.3",
+    "karma-ng-html2js-preprocessor": "^1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/animist-io/wowshuxkluh.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/animist-io/wowshuxkluh/issues"
+  },
+  "homepage": "https://github.com/animist-io/wowshuxkluh#readme"
+}

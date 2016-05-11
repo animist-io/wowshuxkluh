@@ -1,1 +1,3 @@
-proximity.spec.js
+describe('Proximity Event Service', function(){
+
+});

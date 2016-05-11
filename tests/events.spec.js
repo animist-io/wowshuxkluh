@@ -1,1 +1,3 @@
-events.spec.js
+describe('Events', function(){
+
+});

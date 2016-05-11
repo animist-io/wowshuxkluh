@@ -1,1 +1,3 @@
-auth.spec.js
+describe('Authentication Service', function(){
+
+});

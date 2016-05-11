@@ -2,53 +2,89 @@
 
 describe('Accounts Service', function(){
 
+   describe('create( password )', function(){
 
-   describe('get()', function(){
-
-      it('should return false if no account is set', function(){
+      it('should create an account in the lightwallet', function(){
          expect('test written').toBe(true);
       });
 
-      it('should return the address of the current account', function(){
+   });
+
+   describe('list()', function(){
+
+      it('should return an array of available accounts', function(){
+         expect('test written').toBe(true);
+      });
+
+   });
+
+   describe('export( address )', function(){
+
+      it('should return the private key associated with param: address', function(){
+         expect('test written').toBe(true);
+      });
+   
+   });
+
+   describe('fund( source, amount )', function(){
+
+      it('should transfer "amount" from "source" to currently selected account', function(){
+         expect('test written').toBe(true);
+      });
+   })
+
+   describe('transfer( target, amount', function(){
+
+      it('should transfer "amount" from currently selected account to "target"', function(){
          expect('test written').toBe(true);
       });
    });
 
-   describe('set(address, key)', function(){
+   describe('liquidate( target )', function(){
+
+      it('should transfer the entire balance of selected account to "target"', function(){
+         expect('test written').toBe(true);
+      });
+   });
+
+   describe('current()', function(){
+
+      it('should return false if no account has been selected', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should return the address of the currently selected account', function(){
+         expect('test written').toBe(true);
+      });
+   });
+
+   describe('select(address)', function(){
 
       it('should return false if an account is already set', function(){
          expect('test written').toBe(true);
       });
 
-      it('should verify that address and key exist and are strings', function(){
+      it('should verify that address has been created in lightwallet', function(){
          expect('test written').toBe(true);
       });
 
-      it('should store the key in the lightwallet', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should set the address value', function(){
+      it('should set the address as the default to sign transactions with', function(){
          expect('test written').toBe(true);
       });
 
    });
 
-   describe('remove()', function(){
+   describe('unselect()', function(){
 
       it('should return false if no account is set', function(){
          expect('test written').toBe(true);
       });
 
-      it('should remove the private key from the lightwallet', function(){
+      it('should null out the default transaction signing variable', function(){
          expect('test written').toBe(true);
       });
 
-      it('should unset the address value', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should return the old address value', function(){
+      it('should return the most recent selected account address', function(){
          expect('test written').toBe(true);
       });
 

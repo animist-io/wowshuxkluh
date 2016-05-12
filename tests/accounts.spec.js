@@ -33,7 +33,7 @@ describe('Accounts Service', function(){
       });
    })
 
-   describe('transfer( target, amount', function(){
+   describe('transfer( target, amount)', function(){
 
       it('should transfer "amount" from currently selected account to "target"', function(){
          expect('test written').toBe(true);

@@ -1,3 +1,0 @@
-describe('Authentication Service', function(){
-
-});

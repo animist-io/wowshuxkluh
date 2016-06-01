@@ -1,8 +1,11 @@
 describe('Bluetooth Service', function(){
 
-   it('should define some constants for the events it publishes', function(){
+   it('should define some constants for the service', function(){
       expect('test written').toBe(true);
-   
+         // PROXIMITY_NONE 0
+         // PROXIMITY_IMMEDIATE 1
+         // PROXIMITY_NEAR 2
+         // PROXIMITY_FAR  3
    });
 
    // endpoints: returns a list of valid enpoint uuids
@@ -55,7 +58,7 @@ describe('Bluetooth Service', function(){
    // message if address parses correctly.
    describe('authenticate(node)', function(){
 
-      it('should open a BLE connection to the node at service "beaconUuid + 1', function(){
+      it('should open a BLE connection to the endpoint at service "beaconUuid + 1', function(){
          expect('test written').toBe(true);
       });
 
@@ -78,7 +81,9 @@ describe('Bluetooth Service', function(){
    });
 
    // hasTx() Queries current endpoint to see if there are tx's about this event and
-   // returns them to client. Tx's can require additional confirmations.
+   // returns them to client. Tx's can require additional confirmations - for example
+   // they might need to be signed by an application account and be passed to a 
+   // a remote server for that purpose, or they might require a certain proximity reading.
    describe('hasTx()', function(){
 
       it('should subscribe to the txVerify characteristic', function(){
@@ -89,7 +94,7 @@ describe('Bluetooth Service', function(){
          expect('test written').toBe(true);
       });
 
-      it('should resolve w/ array of txs if endpoint finds txs in log data', function(){
+      it('should parse the subscription feed into an array of {requirements, tx} and resolve it', function(){
          expect('test written').toBe(true);
       });
 
@@ -99,12 +104,33 @@ describe('Bluetooth Service', function(){
 
    });
 
-   // A second layer of authentication in which an app with an api key enumerated in the
-   // contract requests confirmation of location by passing Google GeoLocation data to 
-   // the endpoint. Endpoint needs to pull the contract to get the public api key. 
-   describe('authGeo(tx)', function(){
+   // authTx(): Sends a signed transaction to the endpoint
+   describe('authTx', function(){
 
-      it('should write {tx, lat, lng} geoData to rawGeo characteristic', function(){
+      it('should write the signed tx to the signedTx characteristic', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should resolve if the endpoint accepts the signed tx data', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should reject on signedTx writes technical failure w/ message', function(){
+         expect('test written').toBe(true);
+      });
+
+   });
+
+   //  *** This is garbage **** 
+   // A second layer for location verification in which an app with an api key 
+   // enumerated in the contract requests confirmation of location by passing Google GeoLocation data to 
+   // the endpoint. Endpoint needs to pull the contract to get the public api key. . . 
+   //  -- Should be the app developers responsibility -- if they want to 
+   // do other checks they just structure the contract so that are the signing authority 
+   // and only do so if the app meets extra data requirements . . . .
+   /*describe('authGeo()', function(){
+
+      it('should write {lat, lng} geoData to rawGeo characteristic', function(){
          expect('test written').toBe(true);
       });
 
@@ -124,7 +150,7 @@ describe('Bluetooth Service', function(){
          expect('test written').toBe(true);
       });
 
-   });
+   });*/
 
    describe('close()', function(){
 

@@ -15,7 +15,9 @@
     "karma-ng-html2js-preprocessor": "^1.0.0"
   },
   "devDependencies": {
-    "eth-lightwallet": "^2.3.3"
+    "angular": "^1.5.6",
+    "eth-lightwallet": "^2.3.3",
+    "ng-cordova": "^0.1.26-alpha"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

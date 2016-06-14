@@ -55,7 +55,7 @@ describe('Bluetooth Service', function(){
    });
 
    // authenticate()   (For iOS) Client passes signed beacon signal to endpoint and gets conf.
-   // message if address parses correctly.
+   // message if address parses correctly. (A method internal to hasTx() and authTx())
    describe('authenticate(node)', function(){
 
       it('should open a BLE connection to the endpoint at service "beaconUuid + 1', function(){
@@ -102,16 +102,24 @@ describe('Bluetooth Service', function(){
          expect('test written').toBe(true);
       });
 
+      it('should close the connection', function(){
+
+      });
    });
 
-   // authTx(): Sends a signed transaction to the endpoint
-   describe('authTx', function(){
 
-      it('should write the signed tx to the signedTx characteristic', function(){
+   // authTx(): Sends a signed transaction to the endpoint
+   describe('authTx()', function(){
+
+      it('should subscribe to the authTx characteristic', function(){
          expect('test written').toBe(true);
       });
 
-      it('should resolve if the endpoint accepts the signed tx data', function(){
+      it('should reject on subscription technical failure w/ message', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should write the signed tx to the signedTx characteristic', function(){
          expect('test written').toBe(true);
       });
 
@@ -119,6 +127,55 @@ describe('Bluetooth Service', function(){
          expect('test written').toBe(true);
       });
 
+      it('should receive/resolve the transaction hash', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should reject if auth transaction hash is 0 or connection times out', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should close the connection', function(){
+         expect('test written').toBe(true);
+      });
+
+
+   });
+
+   // Used in cases where the tx will be signed and remotely by an application server
+   // that maintains its own keys and access to an ethereum node. The hex hash of
+   // the auth transaction is returned so that the remote server can wait for it to 
+   // confirm on the chain before advancing the contract state. 
+   describe('authPresence()', function(){
+      
+      it('should subscribe to the authPresence characteristic', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should reject on subscription technical failure w/ message', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should write the authentication signal to the authPresence characteristic', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should reject on signedAuth writes technical failure w/ message', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should receive/resolve the auth transaction hash', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should reject if auth transaction hash is 0 or connection times out', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should close the connection', function(){
+         expect('test written').toBe(true);
+      });
+  
    });
 
    //  *** This is garbage **** 

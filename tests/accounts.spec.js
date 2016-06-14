@@ -2,23 +2,51 @@
 
 describe('Accounts Service', function(){
 
-   describe('createUserAccount( string password )', function(){
 
-      it('should create a user keystore if none exists', function(){
+   describe('createKeystore( string id, string password )', function(){
+
+      it('should validate the params and reject on error', function(){
          expect('test written').toBe(true);
       });
 
-      it('should create an account in the user keystore', function(){
+      it('should create a keystore if none exists in the DB', function(){
          expect('test written').toBe(true);
       });
 
-      it('should return the user keystore', function(){
+      it('should reject w/ message if Keystore exists', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should add the pwDerived key to iOS Keychain or Android encrypted storage', function(){
          expect('test written').toBe(true);
       });
 
    });
 
-   
+   describe('getKey( string id )', function(){
+
+      it('should return the pwDerived key for the user keystore or null on failure', function(){
+         expect('test written').toBe(true);
+      });
+
+   });
+
+   describe('createUserAccount( string key )', function(){
+
+      it('should create an account in the user keystore', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should return the address of the new account', function(){
+         expect('test written').toBe(true);
+      });
+
+      it('should return null on failure', function(){
+         expect('test written').toBe(true);
+      });
+      
+   });
+
    describe('initUserDb( string remote (optional) )', function(){
 
       it('should reject with a message if there is an existing userDB', function(){

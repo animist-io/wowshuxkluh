@@ -1,4 +1,5 @@
 angular.module('Animist', [  
     'ngCordova',
-    'ngCordovaBluetoothLE'
+    'ngCordovaBluetoothLE',
+    'pouchdb'
 ]);

@@ -25,6 +25,8 @@
     "tests"
   ],
   "dependencies": {
-    "angular-mocks": "~1.5.5"
+    "angular-mocks": "~1.5.5",
+    "angular-pouchdb": "~4.3.0",
+    "ngCordova": "~0.1.26-alpha"
   }
 }

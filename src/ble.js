@@ -56,6 +56,9 @@ angular.module('Animist')
            EOF :                      'EOF' 
         };
 
+        // Excluded proximity value: 
+        var unknown = 'proximityUnknown';
+
         // -------------------------------------------------------------------------
         // ------------------------------- API -------------------------------------
         // -------------------------------------------------------------------------
@@ -68,6 +71,7 @@ angular.module('Animist')
         // State values that can be tested against in the listen()
         // resolve/reject callbacks
         self.state = {
+            PROXIMITY_UNKNOWN: 0,
             TRANSACTING: 1,
             NOT_INITIALIZED: 2,
             NOT_ANIMIST: 3,
@@ -133,6 +137,10 @@ angular.module('Animist')
             // Return immediately if we are already connected/connecting 
             if ( midTransaction ){
                 d.resolve(self.state.TRANSACTING);
+
+            // Verify device is meaningfully in range
+            } else if ( self.proximity === unknown ){
+                d.reject(self.state.PROXIMITY_UNKNOWN);
 
             // Verify initialization
             } else if (!initialized){ 

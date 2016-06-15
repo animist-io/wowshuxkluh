@@ -9,9 +9,16 @@ Wowshuxkluh will be an an Angular 1.x library for Ionic.js that manages the conn
 Key issues here include:
 
 + iBeacon signal management
-+ Ethereum account management on devices (Lightwallet?)
++ Ethereum account management on devices 
 + Secure local connection/auth between IOT Node and mobile device
 + Bundling for inclusion in an Ionic application
+
+Cordova dependencies
+
+```
+$ cordova plugin add cordova-plugin-bluetoothle
+$ cordova plugin add com.unarin.cordova.beacon
+```
 
 
 

@@ -1,10 +1,10 @@
 // @service: Beacons
 // Handlers for initializing, transmitting and receiving of beacon signals
-(function(){
+//(function(){
 
 "use strict"
 
-angular.module('Animist')
+angular.module('animist')
   .service("AnimistBeacons", AnimistBeacons);
 
     function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBLE, AnimistAccount ){
@@ -24,7 +24,7 @@ angular.module('Animist')
 
         // ------------------------  Logger Utility --------------------------
         var logger = function(msg, obj){
-            Meteor.call('ping', msg + ' ' + JSON.stringify(obj));
+            //Meteor.call('ping', msg + ' ' + JSON.stringify(obj));
         }
 
         // ------------------------  Public ---------------------------------
@@ -39,9 +39,8 @@ angular.module('Animist')
             var d = $q.defer();
             var where = "AnimistBeacons:initialize";
            
-            MSLog('@beacons:initialize');
-
-            var profile, appBeacon;
+            // Return if initialized. Also beacons cannot run in browser + output is annoying in XCode.
+            if (self.initialized  ) { d.resolve(); return d; }
 
             // Init region array. Set device to wake app up when killed/backgrounded
             setUpRegions();
@@ -98,23 +97,15 @@ angular.module('Animist')
         // has the uuid specified by 'result'.   
         function onExit(result){
 
-            //MSLog('@beacons:onExit');
-            var transmitter, pkg, beacon;
-            
-            beacon = result.region;
+            var beacon = result.region;
             
             if (beacon){
 
-                pkg = {
-                   transmitter: beacon.uuid,
-                   receiver: receiver,
-                };
-
                 AnimistBLE.reset();
-                Meteor.call('disconnect', pkg);
+                //Meteor.call('disconnect', pkg);
 
             } else {
-                MSLog("@beacon:disconnect. Error: receiver - " + receiver);
+                //MSLog("@beacon:disconnect. Error: receiver - " + receiver);
             }
            
         };
@@ -143,6 +134,6 @@ angular.module('Animist')
                 })
             };
         };
-    }
+    };
 
-})()
+//})()

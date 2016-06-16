@@ -1,9 +1,8 @@
 
-(function(){
+//(function(){
 
 "use strict"
-
-angular.module('Animist')
+angular.module('animist')
   .service("AnimistAccount", AnimistAccount);
 
     function AnimistAccount($rootScope, $q ){
@@ -52,7 +51,7 @@ angular.module('Animist')
         }
 
         // TEST . . . 
-        function generateTx(tx){
+        /*function generateTx(tx){
 
             var abi = [{"constant":true,"inputs":[{"name":"key","type":"uint256"}],"name":"getValue","outputs":[{"name":"value","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"key","type":"uint256"},{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"type":"function"},{"constant":false,"inputs":[{"name":"key","type":"uint256"},{"name":"newValue","type":"uint256"}],"name":"setValue","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"uint256"}],"name":"getOwner","outputs":[{"name":"owner","type":"address"}],"type":"function"},{"constant":false,"inputs":[{"name":"key","type":"uint256"}],"name":"register","outputs":[],"type":"function"}]
 
@@ -69,7 +68,7 @@ angular.module('Animist')
             var signedRegisterTx = signing.signTx(user.keystore, user.pwDerivedKey, registerTx, user.address)  
 
             console.log(JSON.stringify(signedRegisterTx));
-        }
+        }*/
 
         self.validate = function(_user){
             return ( _user != null && typeof _user === 'object' && 
@@ -83,4 +82,4 @@ angular.module('Animist')
      
     };
     
-})();
+//})();

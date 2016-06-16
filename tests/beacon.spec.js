@@ -1,20 +1,23 @@
 "use strict"
+var debug;
 
 describe('Service: AnimistBeacons', function () {
     
     beforeEach(module('animist'));      // Animist
-    beforeEach(module('animstMocks'));  // cordovaBluetoothBLE & cordovaBeacon
+    beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
 
-    var $scope, $q, $cordovaBeacon, Beacons, BLE;
+    var $scope, $q, $cordovaBeacon, Beacons, AnimistBLE, AnimistAccount, d;
 
-    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_, AnimistBLE ){
+    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_, _AnimistBLE_ ){
         
         $scope = _$rootScope_;
         $cordovaBeacon = _$cordovaBeacon_;
         $q = _$q_;
     
         Beacons = _AnimistBeacons_;
-        BLE = _AnimistBLE_; 
+        debug = $cordovaBeacon;
+        AnimistBLE = _AnimistBLE_; 
+
     }));
 
     it('should initialize with the "initialized" flag equal to false', function(){
@@ -67,31 +70,11 @@ describe('Service: AnimistBeacons', function () {
             })
         });
 
-        it('should begin advertising as the user', function(){
-            var profile = Mock.user.profile;
-            
-            spyOn($cordovaBeacon, 'createBeaconRegion').and.callThrough();
-            spyOn($cordovaBeacon, 'startAdvertising');
-
-            Beacons.initialize();
-
-            expect($cordovaBeacon.createBeaconRegion).toHaveBeenCalledWith(
-                profile.beaconName,
-                profile.appId,
-                parseInt(profile.major),
-                parseInt(profile.minor),
-                true
-            );
-
-            expect($cordovaBeacon.startAdvertising).toHaveBeenCalledWith(mockRegion);
-
-        });
 
         it('should set init. flag to true and resolve if user authorized beacon use', function(){
             var q;
 
             spyOn($cordovaBeacon, 'getAuthorizationStatus').and.callThrough();
-            defer.resolve();
             
             q = Beacons.initialize();
             $scope.$digest();
@@ -101,21 +84,18 @@ describe('Service: AnimistBeacons', function () {
 
         })
 
-        it('should mop up local storage, set init. flag to false, and reject if user forbids beacon use', function(){
+        it('should set init. flag to false, and reject if user forbids background beacon use', function(){
             var q;
 
+
             spyOn($cordovaBeacon, 'getAuthorizationStatus').and.callThrough();
-            defer.reject();
-            $window.localStorage['pl_newInstall'] = true;
-    
+            $cordovaBeacon.throwsError = true;
+
             q = Beacons.initialize();
             $scope.$digest();
 
             expect(Beacons.initialized).toBe(false);
             expect(q.promise.$$state.status).toBe(2);
-            expect(q.promise.$$state.value).toBe('AUTH_REQUIRED');
-            expect($window.localStorage['pl_newInstall']).toBe(undefined);
-
         })
     });
 
@@ -135,25 +115,20 @@ describe('Service: AnimistBeacons', function () {
                 }]
             };
 
-            $window.localStorage['pl_id'] = mock_storage_id;
-
             Beacons.initialize();
             $scope.$digest();
             
         })
-        it('should call Meteor.newConnection with user & beacon data', function(){
+        it('should call AnimistBLE.listen w/ beacon id & proximity', function(){
 
-            var expected_pkg = {
-                transmitter: "1000_1001_AAAAAAA",
-                receiver: 'ZZZZZZZZ',
-                proximity: 'proximityNear'
-            };
+            var expected_uuid = 'AAAAAAA';
+            var expected_proximity = 'proximityNear';
 
-            spyOn(Meteor, 'call');
+            spyOn(AnimistBLE, 'listen').and.callThrough();
             $scope.$broadcast('$cordovaBeacon:didRangeBeaconsInRegion', mock_beacons);
+            
             $scope.$digest();
-            expect(Meteor.call).toHaveBeenCalledWith('newConnection', expected_pkg)
-
+            expect(AnimistBLE.listen).toHaveBeenCalledWith(expected_uuid, expected_proximity);
         })
 
     });
@@ -164,26 +139,24 @@ describe('Service: AnimistBeacons', function () {
 
         beforeEach(function(){
 
-            mock_storage_id = 'ZZZZZZZZ';
             mock_beacons = { region: { uuid: 'AAAAAAA' }};
-            $window.localStorage['pl_id'] = mock_storage_id;
-
+    
             Beacons.initialize();
             $scope.$digest();
             
         })
 
-        it('should call Meteor.disconnect', function(){
+        it('should reset the AnimistBLE connection', function(){
             var expected_pkg = {
                 transmitter: 'AAAAAAA',
                 receiver: 'ZZZZZZZZ'
             }
 
-            spyOn(Meteor, 'call');
+            spyOn(AnimistBLE, 'reset');
             $scope.$broadcast('$cordovaBeacon:didExitRegion', mock_beacons);
             $scope.$digest();
-            expect(Meteor.call).toHaveBeenCalledWith('disconnect', expected_pkg)
+            expect(AnimistBLE.reset).toHaveBeenCalled();
         });
 
-    })
+    });
 });

@@ -1,5 +1,8 @@
-angular.module('Animist', [  
-    'ngCordova',
-    'ngCordovaBluetoothLE',
-    'pouchdb'
+console.log('loading animist');
+
+var anim = angular.module('animist', [  
+    //'ngCordova',
+    //'ngCordovaBluetoothLE'
+    //'pouchdb'
 ]);
+

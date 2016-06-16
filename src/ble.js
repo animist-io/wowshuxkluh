@@ -1,11 +1,11 @@
 // TO DO:
 // generateTx
 // Peripheral authTx, signTx 
-(function(){
+//(function(){
 
 "use strict"
 
-angular.module('Animist')
+angular.module('animist')
   .service("AnimistBLE", AnimistBLE);
 
     function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
@@ -579,4 +579,4 @@ angular.module('Animist')
         }
     };
 
-})();
+//})();

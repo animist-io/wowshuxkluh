@@ -4,6 +4,7 @@
 //(function(){
 
 "use strict"
+var ble_debug;
 
 angular.module('animist')
   .service("AnimistBLE", AnimistBLE);
@@ -13,7 +14,7 @@ angular.module('animist')
         var user = null; // 
         var initialized = false;
         var midTransaction = false;  
-        var canTransact = true;
+        var completed = false;
         
         // Events 
         var events = {
@@ -56,6 +57,15 @@ angular.module('animist')
            EOF :                      'EOF' 
         };
 
+        // Weightings for proximity comparison: 
+        // If the proximity requirement is 'far' we interpret that as
+        // 'at least far' so 'near' will meet the requirement.
+        var proximityWeights = {
+            'proximityImmediate' : 3,
+            'proximityNear' : 2,
+            'proximityFar' : 1
+        };
+
         // Excluded proximity value: 
         var unknown = 'proximityUnknown';
 
@@ -73,28 +83,33 @@ angular.module('animist')
         self.state = {
             PROXIMITY_UNKNOWN: 0,
             TRANSACTING: 1,
-            NOT_INITIALIZED: 2,
             NOT_ANIMIST: 3,
             CONNECTING: 4, 
-            COMPLETED: 5
+            COMPLETED: 5,
+            INITIALIZING: 6,
+            BLE_INIT_FAIL: 7
+
         };
 
         // initialize(): Must be called before listen() can begin. Validates user
         // object and initializes $cordovaBLE
-        self.initialize = function(_user){
+        self.initialize = function(){
 
             var where = 'AnimistBLE:initialize: ';
             var userError = 'invalid user: ';
             var d = $q.defer();
             
             // Check/Set user
-            if (AnimistAccount.validate(_user)) {
-                user = _user;
+            if (AnimistAccount.initialized) {
+                user = AnimistAccount.user;
 
-                // Initialize BLE 
-                $cordovaBluetoothLE.initialize({request: true}).then( null,
-                    function(error)  { initialized = false; d.reject({where: where, error: error})},
-                    function(success){ initialized = true; d.resolve()}
+                // Initialize BLE: Note: success callback runs in unit tests only - implemented here
+                // because notify can't be called ? Not sure. It's bullshit but the rest of the test suite
+                // has to pass through this so necessary to fake. 
+                $cordovaBluetoothLE.initialize({request: true}).then( 
+                    function(success){ }, 
+                    function(error)  { initialized = false; d.reject({where: where, error: error}) },
+                    function(notify) { initialized = true; d.resolve() }
                 );
             } else {
                 d.reject({where: where, error: userError});
@@ -114,7 +129,7 @@ angular.module('animist')
                 then().finally(function(result){
 
                     self.peripheral = {}; 
-                    canTransact = true;
+                    completed = false;
                     midTransaction = false;
                     logger(where, result); 
                 }
@@ -133,37 +148,39 @@ angular.module('animist')
             var d = $q.defer();
             
             self.proximity = proximity;
+            
+            if (!initialized){
+                self.initialize().then(
+                    function(){d.resolve(self.state.INITIALIZING)},
+                    function(){d.reject(self.state.BLE_INIT_FAIL)}
+                );
 
             // Return immediately if we are already connected/connecting 
-            if ( midTransaction ){
+            } else if ( midTransaction ){
                 d.resolve(self.state.TRANSACTING);
 
             // Verify device is meaningfully in range
             } else if ( self.proximity === unknown ){
                 d.reject(self.state.PROXIMITY_UNKNOWN);
 
-            // Verify initialization
-            } else if (!initialized){ 
-                d.reject(self.state.NOT_INITIALIZED);
-
             // Verify beacon is Animist
             } else if ( !isAnimistSignal(beaconId)){
                 d.reject(self.state.NOT_ANIMIST);
 
             // Connect if allowed & resolve immediately
-            } else if ( canTransact ){
+            } else if ( !completed ){
                 
                 midTransaction = true;
                 peripheral_uuid = endpointMap[beaconId];
 
                 // Any connection errors below here propagates back to 
                 // this handler which broadcasts bleFailure and ends the session. 
-                openLink(peripheral_uuid, proximity).then(
+                self.openLink(peripheral_uuid).then(
                     null,
                     function(error){
                         logger(where, error);
                         $rootScope.$broadcast(events.bleFailure, {error: error});
-                        endSession();
+                        self.endSession();
                     }
                 );
                 d.resolve(self.state.CONNECTING);
@@ -181,7 +198,7 @@ angular.module('animist')
         // -------------------------------------------------------------------------
 
         // openLink(): Called by listen() . . . . 
-        function openLink( uuid, proximity ){
+        self.openLink = function( uuid ){
 
             var where = 'AnimistBLE:openLink: ';
             var d = $q.defer();
@@ -190,16 +207,16 @@ angular.module('animist')
             if (!wasConnected()){
                 
                 // Scan, discover and try to get tx
-                scan(uuid).then(function(scan){
-                    connectAndDiscover(scan.address).then(function(device){
+                self.scan(uuid).then(function(scan){
+                    self.connectAndDiscover(scan.address).then(function(){
                             
                         // Peripheral vals from the scan
                         self.peripheral.address = scan.address;
                         self.peripheral.service = uuid;
                         
                         // Setup Subscriptions
-                        readPin().then(function(){ 
-                            subscribeHasTx().then(function(){
+                        self.readPin().then(function(){ 
+                            self.subscribeHasTx().then(function(){
 
                                 d.resolve();
 
@@ -214,7 +231,6 @@ angular.module('animist')
 
             // Cached tx but session is stale: Start again w/ a hard reset
             } else if (hasTimedOut()){
-                
                 self.reset();
                 d.resolve();
 
@@ -222,17 +238,17 @@ angular.module('animist')
             // Check this, connect and submit cached tx
             } else if (proximityMatch(self.peripheral.tx )) {
 
-                connect(self.peripheral.address).then(function(){                  
-                    submitTx(self.peripheral.tx).then(function(){ 
+                self.connect(self.peripheral.address).then(function(){  
 
-                        d.resolve(); 
-
-                        // Waiting for the txConfirm 
-                        // events w/ their txHashes. SubmitTx 
-                        // will manage closing everything down on
-                        // success or failure.
+                    self.submitTx(self.peripheral.tx);
                     
-                    }, function(e){ d.reject(e)}) 
+                    // Waiting for the txConfirm 
+                    // events w/ their txHashes. SubmitTx 
+                    // will manage closing everything down on
+                    // success or failure.
+
+                    d.resolve();
+                    
                 }, function(e){ d.reject(e)}); 
             
             // Cached but proximity is wrong: Stay closed, keep cycling.
@@ -243,8 +259,10 @@ angular.module('animist')
             return d.promise;
         }
 
-        function submitTx(tx){
+        self.submitTx = function(tx){
         
+            var out = {};
+
             // Case: User can sign their own tx.
             // Broadcasts txHash of the signedTx or error post-write
             if (tx.authority === user.address) {
@@ -254,12 +272,12 @@ angular.module('animist')
                 out.tx = user.generateTx(tx);
                 // ********************************
 
-                writeTx(out, UUID.signTx).then(
+                self.writeTx(out, UUID.signTx).then(
 
                     function(txHash){ $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} )}, 
                     function(error) { $rootScope.$broadcast( events.signedTxFailure, {error: error} )}
 
-                ).finally(function(){ endSession()});
+                ).finally(function(){ self.endSession()});
 
             // Case: Signing will be remote - ask endpoint to validate presence
             // Broadcasts txHash of the endpoint's authTx or error post-write
@@ -268,18 +286,18 @@ angular.module('animist')
                 out.id = tx.sessionId;
                 out.pin = user.sign(self.pin);
 
-                writeTx(out, UUID.authTx).then(
+                self.writeTx(out, UUID.authTx).then(
                     
                     function(txHash){ $rootScope.$broadcast( events.authTxSuccess, {txHash: txHash} )}, 
                     function(error){  $rootScope.$broadcast( events.authTxFailure, {error: error} )}
 
-                ).finally(function(){ endSession() });
+                ).finally(function(){ self.endSession() });
 
             // Case: No one here is authorized (Bad api key etc . . .)
             // Broadcasts unauthorized error
             } else {
                 $rootScope.$broadcast( events.unauthorizedTx );
-                endSession();
+                self.endSession();
             }
         };
 
@@ -291,11 +309,11 @@ angular.module('animist')
             if (self.peripheral.tx){
                 
                 proximityMatch(self.peripheral.tx) ? 
-                    submitTx(self.peripheral.tx) : 
-                    close();
+                    self.submitTx(self.peripheral.tx) : 
+                    self.close();
 
             } else {
-                endSession(); 
+                self.endSession(); 
             }
         });
 
@@ -304,7 +322,7 @@ angular.module('animist')
         // @function scan( uuid ) 
         // @param uuid (String): Animist service uuid associated w/ the heard beacon uuid 
         // Resolves the BLE hardware address of the endpoint peripheral
-        function scan( uuid ){
+        self.scan = function( uuid ){
 
             var where = 'AnimistBLE:scan: '
             var d = $q.defer();
@@ -330,7 +348,7 @@ angular.module('animist')
         };
 
         // Initial connection
-        function connectAndDiscover( address ){
+        self.connectAndDiscover = function( address ){
 
             var where = 'AnimistBLE:connectAndDiscover: '
             var d = $q.defer();
@@ -348,6 +366,7 @@ angular.module('animist')
 
                 // Connected -> Discover
                 function(connected){
+
                     $cordovaBluetoothLE.discover({address: address, timeout: 5000}).then(
                         // Discovered
                         function(device){ d.resolve(device) },
@@ -362,7 +381,7 @@ angular.module('animist')
             return d.promise;
         };
 
-        function connect( address ){
+        self.connect = function( address ){
 
             var where = 'AnimistBLE:connect: '
             var d = $q.defer();
@@ -387,14 +406,14 @@ angular.module('animist')
         // the proximity requirement hasn't been met. Client will continue to ping us
         // w/ new proximity readings which we parse in openLink() to decide if we
         // should reconnect
-        function close(){
+        self.close = function(){
             var where = "AnimistBLE:close: ";
             var param = { address: self.peripheral.address };
 
             $cordovaBluetoothLE.close(param).then().finally(
                 function(){ 
                     midTransaction = false; 
-                    logger(where, null); 
+                    //logger(where, null); 
                 }
             );
         };
@@ -402,17 +421,17 @@ angular.module('animist')
         // endSession(): Called when transaction is completed OR no transaction 
         // was found. Stops any reconnection attempt while client is in current 
         // beacon region. 
-        function endSession(){
-            canTransact = false;
+        self.endSession = function(){
+            completed = true;
             midTransaction = false;
             close();
         };
 
         // ----------------Characteristic Subscriptions/Reads/Writes -----------------------------
         
-        function writeTx(out, dest){
+        self.writeTx = function(out, dest){
         
-            var where = 'AnimistBLE:sendTx: ';
+            var where = 'AnimistBLE:writeTx: ';
             var d = $q.defer();
 
             // Characteristic params
@@ -436,7 +455,7 @@ angular.module('animist')
 
                         req.value = out;
                         $cordovaBluetoothLE.write(req).then(
-                            function(success){ logger(where, sub) }, 
+                            function(success){}, 
                             function(error){ d.reject({where: where, error: error})}
                         );
 
@@ -449,9 +468,9 @@ angular.module('animist')
             return d.promise;
         };
 
-        function subscribeHasTx(){
+        self.subscribeHasTx = function(){
             
-            var decoded, msg = '';
+            var decoded, signedPin, msg = '';
             var where = 'AnimistBLE:subscribeHasTx: ';
             var d = $q.defer();
                 
@@ -478,13 +497,13 @@ angular.module('animist')
                         req.value = encode(signedPin);
 
                         $cordovaBluetoothLE.write(req).then(
-                            function(success){ d.resolve(logger(where, sub))}, 
+                            function(success){}, 
                             function(error){ d.reject({where: where, error: error})}
                         );
 
                     // Notification handler: broadcasts receivedTx event
                     } else {
-
+    
                         decoded = decode(sub.value);
                         
                         // Case: mid-transmission
@@ -496,7 +515,7 @@ angular.module('animist')
                         } else {
                             self.peripheral.tx = msg;
                             $rootScope.$broadcast( events.receivedTx );
-                            logger(where, msg);
+                            //logger(where, msg);
                         }
                     };
                 }
@@ -504,7 +523,7 @@ angular.module('animist')
             return d.promise;
         }
 
-        function readPin(){
+        self.readPin = function(){
             
             var decoded;
             var where = 'AnimistBLE:readPIN: ';
@@ -520,15 +539,15 @@ angular.module('animist')
 
             // Decode response and update pin value
             $cordovaBluetoothLE.read(req).then( 
+                // Update pin
                 function(result){ 
-                    // Update pin
-                    self.pin = decode( result.value )
-                    logger(where, self.pin);
-                    d.resolve();
-
-                },
+                    self.pin = decode(result.value); 
+                    d.resolve()},
+                
                 // Subscribe failed     
-                function(error){ d.reject({where: where, error: error})}
+                function(error){ 
+                    d.reject({where: where, error: error})
+                }
             );
             
             return d.promise;
@@ -537,7 +556,7 @@ angular.module('animist')
         // --------------------- Utilities --------------------------------
 
         function proximityMatch(tx){
-            return ( tx && (tx.proximity === self.proximity) );
+            return ( tx && (proximityWeights[self.proximity] >= proximityWeights[tx.proximity]) );
         }
 
         function wasConnected(){
@@ -575,8 +594,14 @@ angular.module('animist')
 
         // Remote Meteor Debugging
         function logger(msg, obj){
-            (Meteor) ? Meteor.call('ping', msg + ' ' + JSON.stringify(obj)) : false;
+            //(Meteor) ? 
+            //    Meteor.call('ping', msg + ' ' + JSON.stringify(obj)) : 
+                console.log(msg + '' + JSON.stringify(obj));
         }
+
+        // Unit Test proxies;
+
+
     };
 
 //})();

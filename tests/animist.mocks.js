@@ -13,7 +13,7 @@ angular.module('animistMocks', [])
     // setting emulateWriteTx to true notifies w/ a successful subscription and a 
     //       single subsequent notice that mocks a txHash msg.
 
-    .service('$cordovaBluetoothLE', function ($q) {
+    .service('$cordovaBluetoothLE', function ($q, $rootScope, $timeout) {
         
         var self = this;
 
@@ -22,6 +22,14 @@ angular.module('animistMocks', [])
         
         // Flag to trigger generic rejections
         self.throwsError = false;
+
+        // Flags to trigger specific hardware layer errors
+        self.throwsScan = false;
+        self.throwsConnect = false;
+        self.throwsDiscover = false;
+        self.throwsRead = false;
+        self.throwsWrite = false;
+        self.throwsSubscribe = false;
 
         // Flags to trigger specific write callback errors
         self.throwsInvaidJSON = false;
@@ -66,14 +74,17 @@ angular.module('animistMocks', [])
         };
 
 
+        // Public Mock Data
+        self.mockHasTxResult = "{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
+        self.mockWriteTxResult = "f88d028609184e72a000832dc6c0947764b6a2728a";
+
         // Mock data
         var scanResult = { "status":"scanResult","advertisement":{"solicitedServiceUuids":[],"overflowServiceUuids":[],"localName":"Animist","isConnectable":true,"serviceData":{},"serviceUuids":["56D2E78E-FACE-44C4-A786-1763EA8E4302"]},"rssi":-35,"name":"User’s Mac mini","address":"B70DCC59-4B65-C819-1C2C-D32B7FA0369A"};
         var discoverResult = {"status":"discovered","services":[{"characteristics":[{"descriptors":[],"properties":{"read":true},"uuid":"2A29"},{"descriptors":[],"properties":{"read":true},"uuid":"2A24"}],"uuid":"180A"},{"characteristics":[{"descriptors":[{"uuid":"2902"}],"properties":{"write":true,"notify":true},"uuid":"8667556C-9A37-4C91-84ED-54EE27D90049"}],"uuid":"D0611E78-BBB4-4591-A5F8-487910AE4366"},{"characteristics":[{"descriptors":[],"properties":{"read":true},"uuid":"C40C94B3-D9FF-45A0-9A37-032D72E423A9"},{"descriptors":[{"uuid":"2902"}],"properties":{"write":true,"indicate":true},"uuid":"BFA15C55-ED8F-47B4-BD6A-31280E98C7BA"}],"uuid":"56D2E78E-FACE-44C4-A786-1763EA8E4302"}],"name":"User’s Mac mini","address":"B70DCC59-4B65-C819-1C2C-D32B7FA0369A"};
-
         var pinResult = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p";
+        
         var pinResultRaw = self.encodeMock(pinResult);
 
-        var hasTx ="{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
         var hasTxRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock("{\"code\":\"606060405261038180610013600061037c565b")},
@@ -82,31 +93,33 @@ angular.module('animistMocks', [])
             {status: 'notify', value: self.encodeMock("EOF")}
         ];
 
-        var writeTx = "f88d028609184e72a000832dc6c0947764b6a2728a";
         var writeTxRaw = [
             {status: 'subscribed', value: 0},
-            {status: 'notify', value: self.encodeMock(writeTx)}
+            {status: 'notify', value: self.encodeMock(self.mockWriteTxResult)}
         ];
 
         
 
         // API 
+
+        // Requires $timeout.flush() to return successfully
         self.initialize = function () {
             var defer = $q.defer();
 
             (self.throwsError) ? 
                 defer.reject(generic):
-                defer.resolve();
+                $timeout(function(){ defer.notify() },0);
     
             return defer.promise;
         };
 
+        // Requires $timeout.flush() to return successfully
         self.startScan = function (params) {
             var defer = $q.defer();
 
-            (self.throwsError) ? 
+            (self.throwsScan) ? 
                 defer.reject(generic):
-                defer.resolve(scanResult);
+                $timeout(function(){ defer.notify(scanResult) },0);
     
             return defer.promise;
         };
@@ -122,13 +135,14 @@ angular.module('animistMocks', [])
             return defer.promise;
         };
 
+        // Requires $timeout.flush() to return successfully
         self.connect = function (params) {
 
             var defer = $q.defer();
 
-            (self.throwsError) ? 
+            (self.throwsConnect) ? 
                 defer.reject(generic):
-                defer.resolve(true);
+                $timeout(function(){ defer.notify() },0);
     
             return defer.promise;
         };
@@ -148,7 +162,7 @@ angular.module('animistMocks', [])
 
             var defer = $q.defer();
 
-            (self.throwsError) ? 
+            (self.throwsDiscover) ? 
                 defer.reject(generic):
                 defer.resolve(discoverResult);
     
@@ -158,28 +172,29 @@ angular.module('animistMocks', [])
         self.read = function(params){
             var defer = $q.defer();
 
-            (self.throwsError) ? 
+            (self.throwsRead) ? 
                 defer.reject(generic):
-                defer.resolve(pinResultRaw);
+                defer.resolve({status: true, value: pinResultRaw});
     
             return defer.promise;
         };
 
+        // Requires $timeout.flush() to return successfully
         self.subscribe = function(params){
             var defer = $q.defer();
 
-            if (self.throwsError){
+            if (self.throwsSubscribe){
                 defer.reject(generic);
             } else if (self.emulateHasTx){
-                angular.forEach(hasTxRaw, function(packet){
-                    defer.notify(packet);
-                });
-                defer.resolve();
 
+                angular.forEach(hasTxRaw, function(packet){
+                    $timeout(function(){ defer.notify(packet) },0);
+                });
             } else if (self.emulateWriteTx){
-                defer.notify(writeTxRaw[0]);
-                defer.notify(writeTxRaw[1]);
-                defer.resolve();
+                $timeout(function(){ 
+                    defer.notify(writeTxRaw[0]);
+                    defer.notify(writeTxRaw[1]);
+                },0);
             }    
                 
             return defer.promise;
@@ -189,7 +204,7 @@ angular.module('animistMocks', [])
 
             var defer = $q.defer();
 
-            if      (self.throwsError)      defer.reject(generic)
+            if      (self.throwsWrite)      defer.reject(generic)
             else if (self.throwsNOTX)       defer.reject(0x04);
             else if (self.throwsInvaidJSON) defer.reject(0x02);
             else if (self.throwsNOMSG)      defer.reject(0x03);

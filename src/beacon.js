@@ -66,7 +66,7 @@ angular.module('animist')
 
             // Initialize BLE
             AnimistAccount.init().then(
-                function(user){ AnimistBLE.initialize(user)}, 
+                function(user){}, 
                 function(error){ logger(where, error)}
             );
             

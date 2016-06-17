@@ -1,7 +1,7 @@
 "use strict"
 var debug;
 
-describe('Service: AnimistBeacons', function () {
+describe('AnimistBeacons Service', function () {
     
     beforeEach(module('animist'));      // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon

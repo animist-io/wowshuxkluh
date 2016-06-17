@@ -8,8 +8,10 @@ angular.module('animist')
     function AnimistAccount($rootScope, $q ){
 
         var self = this;
+
         var user = {};
         
+        self.initialized = true;
         // Testing
         self.init = function(){
 

@@ -1,68 +1,299 @@
-describe('Bluetooth Service', function(){
+"use strict"
+var test_debug;
 
-   it('should define some constants for the service', function(){
-      expect('test written').toBe(true);
-         // PROXIMITY_NONE 0
-         // PROXIMITY_IMMEDIATE 1
-         // PROXIMITY_NEAR 2
-         // PROXIMITY_FAR  3
+describe('AnimistBLE Service', function(){
+
+   beforeEach(module('animist'));      // Animist
+   beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
+
+   var $scope, $q, $ble, Beacons, AnimistAccount, $timeout;
+
+   beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBluetoothLE_, _$timeout_, _AnimistBLE_, _AnimistAccount_ ){
+     
+      $scope = _$rootScope_;
+      $ble = _$cordovaBluetoothLE_;
+      $q = _$q_;
+      $timeout = _$timeout_;
+ 
+      AnimistBLE = _AnimistBLE_; 
+      AnimistAccount = _AnimistAccount_;
+      AnimistAccount.initialized = true;
+      AnimistAccount.user = { 
+         sign: function(){ return 'message' },
+         generateTx: function(tx){ return 'message'} 
+      };
+      //Meteor = false;
+
+   }));
+
+   it('should define constants that expose the services state to the listen() callback', function(){
+      
+      expect(AnimistBLE.state.PROXIMITY_UNKNOWN).toBe(0);
+      expect(AnimistBLE.state.TRANSACTING).toBe(1);
+      expect(AnimistBLE.state.NOT_ANIMIST).toBe(3);
+      expect(AnimistBLE.state.CONNECTING).toBe(4);
+      expect(AnimistBLE.state.COMPLETED).toBe(5);
+      expect(AnimistBLE.state.INITIALIZING).toBe(6);
+      expect(AnimistBLE.state.BLE_INIT_FAIL).toBe(7);
+            
+      expect(Object.keys(AnimistBLE.state).length).toBe(7);
+
    });
 
-   // endpoints: returns a list of valid enpoint uuids
-   describe('endpoints', function(){
+   describe('initialize', function(){
 
-      it('should return a list of valid animist endpoint ids from (?)', function(){
-         expect('test written').toBe(true);
+      var beaconId, init_params, promise;
+      beforeEach(function(){
+
+         beaconId = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         init_params = {request: true};
       });
 
-      it('should verify that these values are correctly formatted', function(){
-         expect('test written').toBe(true);
+      it('should initialize $cordovaBluetoothLE', function(){
+
+         spyOn(AnimistBLE, 'listen').and.callThrough();
+         spyOn($ble, 'initialize').and.callThrough();
+         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($ble.initialize).toHaveBeenCalledWith(init_params);
+         expect(promise.$$state.status).toEqual(1);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.INITIALIZING);
+
+      })
+
+      it('should enable subsequent calls to listen() on success', function(){
+
+         spyOn(AnimistBLE, 'listen').and.callThrough();
+         spyOn($ble, 'initialize').and.callThrough();
+
+         // Initial call
+         AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+         $timeout.flush();
+
+         // Subsequent call
+         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         expect(promise.$$state.status).toEqual(1);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.CONNECTING);
+
       });
 
-   });
+      it('should disable subsequent calls to listen() on failure', function(){
 
-   // Listen (iOS): Initializes app to hear animist endpoint beacon signals & connect via BLE Returns promise
-   describe('listen([uuid, . . . (optional)])', function(){
+         $ble.throwsError = true;
+         spyOn(AnimistBLE, 'listen').and.callThrough();
+         spyOn($ble, 'initialize').and.callThrough();
 
-      it('should validate passed argument as an array of correctly formatted uuids', function(){
-         expect('test written').toBe(true);
+         // Initial call
+         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+         $timeout.flush()
+
+         expect(promise.$$state.status).toEqual(2);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.BLE_INIT_FAIL);
+         
+
+         // Subsequent call
+         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+         $timeout.flush()
+         expect(promise.$$state.status).toEqual(2);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.BLE_INIT_FAIL);
+
+      });
+
+   })
+
+   // Listen (iOS): Opens a Gatt Server connection to the Animist endpoint specified by 
+   // parameter: beacon_uuid. Returns promise.
+   describe('listen([beacon_uuid, proximityString ])', function(){
+
+      var beaconId, promise;
+      beforeEach(function(){
+
+         beaconId = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+
+         // Pre-run initialize()
+         spyOn(AnimistBLE, 'listen').and.callThrough();
+         AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+         $timeout.flush()
+
+      })
+
+      it('should verify beacon signal is animist', function(){
+         
+         // Fail case
+         var badId = "jdslkjflkjf";
+
+         promise = AnimistBLE.listen(badId, 'proximityNear' );
+         $scope.$digest();
+
+         expect(promise.$$state.status).toBe(2);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.NOT_ANIMIST); 
+
+         // Success case
+         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
+
+         expect(promise.$$state.status).toBe(1);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.CONNECTING); 
+
       });
       
-      it('should reject w/ error message if argument is invalid', function(){
-         expect('test written').toBe(true);
+      it('should check proximity and reject if unknown', function(){
+      
+         promise = AnimistBLE.listen(beaconId, 'proximityUnknown' );
+         $scope.$digest();
+
+         expect(promise.$$state.status).toBe(2);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.PROXIMITY_UNKNOWN); 
+      
       });
 
-      it('should ask CB to listen for a discrete set of uuids if an array is passed to it', function(){
-         expect('test written').toBe(true);
+      it('should update state to "transacting" when link opens and resolve immediately on subsequent calls', function(){
+
+         // Connecting . . .
+         AnimistBLE.listen(beaconId, 'proximityNear');
+         $scope.$digest();
+
+         // Transacting . . .
+         promise = AnimistBLE.listen(beaconId, 'proximityNear');
+         $scope.$digest();
+         expect(promise.$$state.status).toBe(1);
+         expect(promise.$$state.value).toEqual(AnimistBLE.state.TRANSACTING); 
+
       });
 
-      it('should listen for the full set of default endpoints if called without argument', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should check to see if BLE is enabled and initialize if necessary', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on BLE initialization failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on iBeacon requestAuthorization failure w/ message', function(){
+      it('should resolve immediately if a transaction has already been completed this session', function(){
          expect('test written').toBe(true);
       });
 
    });
 
-   // authenticate()   (For iOS) Client passes signed beacon signal to endpoint and gets conf.
-   // message if address parses correctly. (A method internal to hasTx() and authTx())
-   describe('authenticate(node)', function(){
+   // openLink()   
+   describe('openLink(beacon_uuid )', function(){
 
-      it('should open a BLE connection to the endpoint at service "beaconUuid + 1', function(){
-         expect('test written').toBe(true);
+      var service_uuid, ble_address, pin, promise;
+
+      beforeEach(function(){
+
+         service_uuid = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         ble_address = 'B70DCC59-4B65-C819-1C2C-D32B7FA0369A'; // From mocks: scanResult
+         pin = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p"; // From mocks: pinResult
+
+         AnimistBLE.initialize();
+
+         spyOn(AnimistBLE, 'scan').and.callThrough();
+         spyOn(AnimistBLE, 'connectAndDiscover').and.callThrough();
+         spyOn(AnimistBLE, 'readPin').and.callThrough();
+         spyOn(AnimistBLE, 'subscribeHasTx').and.callThrough();
+
       });
 
-      it('should reject on BLE connection attempt failure w/ message', function(){
+      it('should initiate endpoint connection & retrieve a tx if no tx is cached', function(){
+         
+         AnimistBLE.peripheral = {};
+         $ble.emulateHasTx = true;
+
+         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         $timeout.flush();
+
+         expect(AnimistBLE.scan).toHaveBeenCalledWith(service_uuid);
+         expect(AnimistBLE.connectAndDiscover).toHaveBeenCalledWith(ble_address);
+         expect(AnimistBLE.readPin).toHaveBeenCalled();
+         expect(AnimistBLE.subscribeHasTx).toHaveBeenCalled();
+
+         expect(AnimistBLE.peripheral.address).toEqual(ble_address);
+         expect(AnimistBLE.peripheral.service).toEqual(service_uuid);
+         expect(AnimistBLE.peripheral.tx).toEqual($ble.mockHasTxResult);
+         expect(AnimistBLE.pin).toEqual(pin);
+
+      });
+
+      it('should broadcast "Animist:receivedTx" when tx transmission completes', function(){
+
+         AnimistBLE.peripheral = {};
+         $ble.emulateHasTx = true;
+         spyOn($scope, '$broadcast');
+
+         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:receivedTx');
+      });
+
+      it('should check cached txs for staleness and reset/resolve when old', function(){
+
+         AnimistBLE.peripheral = {
+            address: ble_address,
+            service: service_uuid,
+            tx: JSON.parse($ble.mockHasTxResult)
+         };
+
+         AnimistBLE.peripheral.tx.expires = (Date.now() - 10000000);
+         spyOn(AnimistBLE, 'reset');
+
+         promise = AnimistBLE.openLink(service_uuid );
+         $scope.$digest();
+
+         expect(promise.$$state.status).toEqual(1);
+         expect(AnimistBLE.reset).toHaveBeenCalled();
+
+      });
+
+      it('should check cur. proximity against cached requirement & resolve if too far away)', function(){
+
+         AnimistBLE.peripheral = {
+            address: ble_address,
+            service: service_uuid,
+            tx: JSON.parse($ble.mockHasTxResult)
+         };
+
+         spyOn(AnimistBLE, 'connect').and.callThrough();
+         AnimistBLE.peripheral.tx.expires = (Date.now() + 10000000);
+         AnimistBLE.peripheral.tx.proximity = 'proximityNear';
+
+         // Should fail: Far not near enough
+         AnimistBLE.proximity = 'proximityFar';
+         
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+
+         expect(promise.$$state.status).toEqual(1);
+         expect(AnimistBLE.connect).not.toHaveBeenCalled();
+
+      });
+
+      it('should connect and submitTx if cur. proximity meets cached requirement', function(){
+
+         AnimistBLE.peripheral = {
+            address: ble_address,
+            service: service_uuid,
+            tx: JSON.parse($ble.mockHasTxResult)
+         };
+
+         spyOn(AnimistBLE, 'connect').and.callThrough();
+         spyOn(AnimistBLE, 'submitTx');
+
+         AnimistBLE.peripheral.tx.expires = (Date.now() + 10000000);
+         AnimistBLE.peripheral.tx.proximity = 'proximityNear';
+
+         // Should succeed: Immediate closer than near
+         AnimistBLE.proximity = 'proximityImmediate';
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect(AnimistBLE.connect).toHaveBeenCalledWith(AnimistBLE.peripheral.address);
+         expect(AnimistBLE.submitTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx);
+
+      });
+
+
+      /*it('should reject on BLE connection attempt failure w/ message', function(){
          expect('test written').toBe(true);
       });
 
@@ -76,9 +307,11 @@ describe('Bluetooth Service', function(){
 
       it('should reject on write characteristic failure', function(){
          expect('test written').toBe(true);
-      });
+      });*/
 
    });
+
+   /*
 
    // hasTx() Queries current endpoint to see if there are tx's about this event and
    // returns them to client. Tx's can require additional confirmations - for example
@@ -178,37 +411,6 @@ describe('Bluetooth Service', function(){
   
    });
 
-   //  *** This is garbage **** 
-   // A second layer for location verification in which an app with an api key 
-   // enumerated in the contract requests confirmation of location by passing Google GeoLocation data to 
-   // the endpoint. Endpoint needs to pull the contract to get the public api key. . . 
-   //  -- Should be the app developers responsibility -- if they want to 
-   // do other checks they just structure the contract so that are the signing authority 
-   // and only do so if the app meets extra data requirements . . . .
-   /*describe('authGeo()', function(){
-
-      it('should write {lat, lng} geoData to rawGeo characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should *then* write signed geoData to signedGeo characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should resolve if the endpoint accepts the data', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on raw/signed Geo writes technical failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on signed Geo write substantive failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-   });*/
-
    describe('close()', function(){
 
       it('should close the connection to the endpoint', function(){
@@ -265,6 +467,6 @@ describe('Bluetooth Service', function(){
       it('should pass data about the failure to the broadcast', function(){
          expect('test written').toBe(true);
       });
-   });
+   });*/
 
 });

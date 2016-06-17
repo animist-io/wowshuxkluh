@@ -204,7 +204,7 @@ angular.module('animistMocks', [])
 
             var defer = $q.defer();
 
-            if      (self.throwsWrite)      defer.reject(generic)
+            if      (self.throwsWrite)      defer.reject(generic);
             else if (self.throwsNOTX)       defer.reject(0x04);
             else if (self.throwsInvaidJSON) defer.reject(0x02);
             else if (self.throwsNOMSG)      defer.reject(0x03);

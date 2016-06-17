@@ -46,8 +46,8 @@ angular.module('animist')
         };
 
         // These are common to whale-island and wowshuxkluh and 
-        // are passed in ble write callbacks on success/failure
-        // **** Do NOT change here w/out updating peripheral code *****
+        // are passed in $cordova ble 'write' callbacks on success/failure
+        // **** Do NOT change here w/out updating whale-island code *****
         var codes = {
 
            INVALID_JSON_IN_REQUEST:   0x02,
@@ -66,7 +66,7 @@ angular.module('animist')
             'proximityFar' : 1
         };
 
-        // Excluded proximity value: 
+        // Excluded proximity value: (iOS string value)
         var unknown = 'proximityUnknown';
 
         // -------------------------------------------------------------------------
@@ -92,7 +92,7 @@ angular.module('animist')
         };
 
         // initialize(): Must be called before listen() can begin. Validates user
-        // object and initializes $cordovaBLE
+        // object and hardware inits via $cordovaBLE
         self.initialize = function(){
 
             var where = 'AnimistBLE:initialize: ';
@@ -103,9 +103,7 @@ angular.module('animist')
             if (AnimistAccount.initialized) {
                 user = AnimistAccount.user;
 
-                // Initialize BLE: Note: success callback runs in unit tests only - implemented here
-                // because notify can't be called ? Not sure. It's bullshit but the rest of the test suite
-                // has to pass through this so necessary to fake. 
+                // Initialize BLE:  
                 $cordovaBluetoothLE.initialize({request: true}).then( 
                     function(success){ }, 
                     function(error)  { initialized = false; d.reject({where: where, error: error}) },
@@ -136,11 +134,11 @@ angular.module('animist')
             );
         };
 
-        // listen(): This gets hit continuously in the Beacon capture callback and just 
+        // listen(): This gets hit continuously in the Beacon capture callback and 
         // 'gate keeps' the peripheral connection. Rejects if beaconId doesn't map to known 
         // animist signal or if the module failed to initalize. Resolves immediately if we 
         // are currently connecting/connected or the transaction is finished. Otherwise 
-        // forwards to openLink() to begin/complete peripheral business. 
+        // forwards to openLink() to begin/complete endpoint transmission. 
         self.listen = function(beaconId, proximity){
 
             var peripheral_uuid;
@@ -149,6 +147,7 @@ angular.module('animist')
             
             self.proximity = proximity;
             
+            // Verify initialization or initialize.
             if (!initialized){
                 self.initialize().then(
                     function(){d.resolve(self.state.INITIALIZING)},
@@ -173,7 +172,7 @@ angular.module('animist')
                 midTransaction = true;
                 peripheral_uuid = endpointMap[beaconId];
 
-                // Any connection errors below here propagates back to 
+                // Any connection errors below propagate back to 
                 // this handler which broadcasts bleFailure and ends the session. 
                 self.openLink(peripheral_uuid).then(
                     null,
@@ -229,7 +228,8 @@ angular.module('animist')
                     }, function(e){ d.reject(e)}) 
                 }, function(e){ d.reject(e)}); 
 
-            // Cached tx but session is stale: Start again w/ a hard reset
+            // Cached tx but session is stale. This means user connected but never got close
+            // enough to endpoint to meet the contract req. Start again w/ a hard reset.
             } else if (hasTimedOut()){
                 self.reset();
                 d.resolve();
@@ -486,10 +486,10 @@ angular.module('animist')
             $cordovaBluetoothLE.subscribe(req).then(null, 
                 
                 // Subscribe failed     
-                function(error){ d.reject({where: where, error: parseCode(error)})},
+                function(error){ d.reject({where: where, error: error})},
                 // Subscribed/Updated
                 function(sub){ 
-                    
+    
                     // Subscribed, resolve: 
                     if (sub.status === 'subscribed'){
 
@@ -498,7 +498,7 @@ angular.module('animist')
 
                         $cordovaBluetoothLE.write(req).then(
                             function(success){}, 
-                            function(error){ d.reject({where: where, error: error})}
+                            function(error){d.reject({where: where, error: parseCode(error)})}
                         );
 
                     // Notification handler: broadcasts receivedTx event

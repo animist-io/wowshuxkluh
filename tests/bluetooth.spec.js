@@ -21,12 +21,15 @@ describe('AnimistBLE Service', function(){
       AnimistAccount = _AnimistAccount_;
       AnimistAccount.initialized = true;
       AnimistAccount.user = { 
+         address: '123',
+         remoteAuthority: '567',
          sign: function(){ return 'message' },
          generateTx: function(tx){ return 'message'} 
       };
 
    }));
 
+   // Public constants
    it('should define constants that expose the services state to the listen() callback', function(){
       
       expect(AnimistBLE.state.PROXIMITY_UNKNOWN).toBe(0);
@@ -41,6 +44,8 @@ describe('AnimistBLE Service', function(){
 
    });
 
+
+   // Initialization: 
    describe('initialize', function(){
 
       var beaconId, init_params, promise;
@@ -179,25 +184,54 @@ describe('AnimistBLE Service', function(){
       });
 
       it('should resolve immediately if a transaction has already been completed this session', function(){
+         
          expect('test written').toBe(true);
+
       });
 
-      it('should broadcast "Animist:bleFailure" if link fails', function(){
-         expect('test written').toBe(true);
+      it('should broadcast "Animist:bleFailure" if link fails and do a hard reset', function(){
+
+         var expected_error = { where : 'AnimistBLE:scan: ', error : { error : 'failed' } }
+         
+         // Trigger error
+         $ble.throwsScan = true;
+
+         spyOn($scope, '$broadcast');
+         spyOn(AnimistBLE, 'reset');
+
+         AnimistBLE.listen(beaconId, 'proximityNear');
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:bleFailure', expected_error );
+         expect(AnimistBLE.reset).toHaveBeenCalled();
+         
       });
 
-      it('should end the session if link fails because no tx was found', function(){
-         expect('test written').toBe(true);
+      it('should broadcast "Animist:noTxFound" if no tx is found and end the session', function(){
+
+         var expected_error = { where : 'AnimistBLE:subscribeHasTx: ', error : 'NO_TX_FOUND' };
+
+         // Trigger error
+         $ble.throwsNOTX = true;
+         $ble.emulateHasTx = true;
+
+         spyOn($scope, '$broadcast');
+         spyOn(AnimistBLE, 'endSession');
+
+         AnimistBLE.listen(beaconId, 'proximityNear');
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:noTxFound', expected_error);
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
       });
 
-      it('should do a hard reset if link fails for connectivity/technical reasons', function(){
-         expect('test written').toBe(true);
-      });
 
    });
 
    // openLink(): A controller for GATT server connections - either app is attempting 
-   // a 'virgin' connection, or it's already cached a tx from a (recent) one and 
+   // a 'virgin' connection, or it's already cached a tx from a (recent) connection and 
    // is attempting to submit it.   
    describe('openLink(beacon_uuid )', function(){
 
@@ -472,191 +506,188 @@ describe('AnimistBLE Service', function(){
 
    });
 
-   // submittx 
-   //describe('')
+   // submitTx(tx): A controller that manages final transaction writes and auth requests to 
+   // the endpoint and wraps the session up on success/failure.
+   describe('submitTx(tx)', function(){
+      var service_uuid, ble_address, pin, expected_request, promise;
 
+      beforeEach(function(){
+
+         service_uuid = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         ble_address = 'B70DCC59-4B65-C819-1C2C-D32B7FA0369A'; // From mocks: scanResult
+         pin = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p"; // From mocks: pinResult
+
+         AnimistBLE.initialize();
+
+         spyOn(AnimistBLE, 'connect').and.callThrough();
+         spyOn(AnimistBLE, 'submitTx').and.callThrough();
+         spyOn(AnimistBLE, 'writeTx').and.callThrough();
+         spyOn(AnimistBLE, 'endSession');
+         spyOn($scope, '$broadcast');
+
+         AnimistBLE.peripheral = {
+            address: ble_address,
+            service: service_uuid,
+            tx: JSON.parse($ble.mockHasTxResult)
+         };
+
+         AnimistBLE.peripheral.tx.expires = (Date.now() + 10000000);
+         AnimistBLE.peripheral.tx.proximity = 'proximityNear';
+         AnimistBLE.proximity = 'proximityNear';
+
+      });
+
+      // ----------------------------------
+      // Case: User signs their own tx
+      // ----------------------------------
+
+      it('should sign/write a tx to "3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06" if user has authority', function(){
+         
+         var expected_out = {
+            id: AnimistBLE.peripheral.tx.sessionId,
+            tx: AnimistAccount.user.generateTx(AnimistBLE.peripheral.tx)
+         };
+
+         // Hard coded signTx characteristic uuid
+         var signedTx_port_addr = '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06'
+
+         // User has authority
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, signedTx_port_addr)
+
+      });
+
+      it('should broadcast success & txHash data if user write is ok and then end session', function(){
+
+         var expected_hash = {txHash: $ble.mockWriteTxResult}
+
+         // User has authority
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
+         $ble.emulateWriteTx = true;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxSuccess', expected_hash);
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+
+      });
+
+      it('should broadcast failure if user write fails and then end session', function(){
+
+         var expected_error = { 
+            error : { 
+               where : 'AnimistBLE:writeTx: ', 
+               error : { 
+                  error : 'failed' 
+               } 
+            }
+         }
+
+         // User has authority
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
+         $ble.emulateWriteTx = true;
+         $ble.throwsSubscribe = true;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxFailure', expected_error);
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+      });
+
+      // -----------------------------------------------------------------------------------------------
+      // Case: Another authority will sign tx elsewhere. Only asking endpoint to confirm user was here.
+      // -----------------------------------------------------------------------------------------------
+
+      it('should sign/send pin to "297E3B0A-F353-4531-9D44-3686CC8C4036" if only requesting oracle auth.', function(){
+         
+         var expected_out = {
+            id: AnimistBLE.peripheral.tx.sessionId,
+            pin: AnimistAccount.user.sign(AnimistBLE.pin)
+         };
+
+         // Hard coded signTx characteristic uuid
+         var authTx_port_addr = '297E3B0A-F353-4531-9D44-3686CC8C4036'
+
+         // User has authority
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, authTx_port_addr)
+
+      });
+
+      it('should broadcast success & txHash data if oracle auth write is ok and then end session', function(){
+
+         var expected_hash = {txHash: $ble.mockWriteTxResult}
+
+         // Someone else has authority
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
+         $ble.emulateWriteTx = true;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxSuccess', expected_hash);
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+
+      });
+
+      it('should broadcast failure if oracle auth write fails and then end session', function(){
+
+         var expected_error = { 
+            error : { 
+               where : 'AnimistBLE:writeTx: ', 
+               error : { 
+                  error : 'failed' 
+               } 
+            }
+         }
+
+         // Someone else has authority / subscription fails
+         AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
+         $ble.emulateWriteTx = true;
+         $ble.throwsSubscribe = true;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxFailure', expected_error);
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+      });
+
+
+      // -----------------------------------------------------------------------------------------------
+      // Case: Authority mismatch . . .
+      // -----------------------------------------------------------------------------------------------
+      it('should broadcast unauthorizedTx failure and end session if no authority matches', function(){
+
+         // Bad Authority
+         AnimistBLE.peripheral.tx.authority = "jsdklfj;lja";
+         $ble.emulateWriteTx = true;
+
+         promise = AnimistBLE.openLink(service_uuid);
+         $scope.$digest();
+         $timeout.flush();
+
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:unauthorizedTx');
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+      });
+
+   });
 
    
-
-
-
-
-
-
-      /*it('should reject on BLE connection attempt failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should sign & write the beacon uuid to the peripheral auth characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should write its proximity to the proximity characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on write characteristic failure', function(){
-         expect('test written').toBe(true);
-      });*/
-
-   //});
-
-   /*
-
-   // hasTx() Queries current endpoint to see if there are tx's about this event and
-   // returns them to client. Tx's can require additional confirmations - for example
-   // they might need to be signed by an application account and be passed to a 
-   // a remote server for that purpose, or they might require a certain proximity reading.
-   describe('hasTx()', function(){
-
-      it('should subscribe to the txVerify characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject if subscription fails or device disconnects w/message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should parse the subscription feed into an array of {requirements, tx} and resolve it', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should resolve false if no tx data was found', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should close the connection', function(){
-
-      });
-   });
-
-
-   // authTx(): Sends a signed transaction to the endpoint
-   describe('authTx()', function(){
-
-      it('should subscribe to the authTx characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on subscription technical failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should write the signed tx to the signedTx characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on signedTx writes technical failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should receive/resolve the transaction hash', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject if auth transaction hash is 0 or connection times out', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should close the connection', function(){
-         expect('test written').toBe(true);
-      });
-
-
-   });
-
-   // Used in cases where the tx will be signed and remotely by an application server
-   // that maintains its own keys and access to an ethereum node. The hex hash of
-   // the auth transaction is returned so that the remote server can wait for it to 
-   // confirm on the chain before advancing the contract state. 
-   describe('authPresence()', function(){
-      
-      it('should subscribe to the authPresence characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on subscription technical failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should write the authentication signal to the authPresence characteristic', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject on signedAuth writes technical failure w/ message', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should receive/resolve the auth transaction hash', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should reject if auth transaction hash is 0 or connection times out', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should close the connection', function(){
-         expect('test written').toBe(true);
-      });
-  
-   });
-
-   describe('close()', function(){
-
-      it('should close the connection to the endpoint', function(){
-         expect('test written').toBe(true);
-      });
-
-   });
-      
-   // Events
-   describe('AnimistBluetooth:connect (Event)', function(){
-
-      it('should fire on connection to the node', function(){
-         expect('test written').toBe(true);
-      });
-   });
-
-   describe('AnimistBluetooth:disconnect (Event)', function(){
-
-      it('should fire on disconnection from the node', function(){
-         expect('test written').toBe(true);
-      });
-   });
-
-   // Remote server confirmations/failures . . . . 
-   describe('AnimistCentral:txSuccess (Event)', function(){
-
-      it('should fire on successful blockchain writes from the node', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should pass data about the success to the broadcast', function(){
-         expect('test written').toBe(true);
-      });
-
-   });
-
-   describe('AnimistCentral:txStatus (Event)', function(){
-
-      it('should fire on transaction status update from the node', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should pass data about the status to the broadcast', function(){
-         expect('test written').toBe(true);
-      });
-   });
-
-   describe('AnimistCentral:txFailure (Event)', function(){
-
-      it('should fire on transaction failure msg from the node', function(){
-         expect('test written').toBe(true);
-      });
-
-      it('should pass data about the failure to the broadcast', function(){
-         expect('test written').toBe(true);
-      });
-   });*/
-
 });

@@ -22,8 +22,9 @@ angular.module('animist')
             signedTxSuccess: 'Animist:signedTxSuccess',
             signedTxFailure: 'Animist:signedTxFailure',
             authTxSuccess: 'Animist:authTxSuccess',
-            authTxSuccess: 'Animist:authTxFailure',
+            authTxFailure: 'Animist:authTxFailure',
             unauthorizedTx: 'Animist:unauthorizedTx',
+            noTxFound: 'Animist:noTxFound',
             bleFailure: 'Animist:bleFailure'
         };
 
@@ -63,7 +64,7 @@ angular.module('animist')
         var proximityWeights = {
             'proximityImmediate' : 3,
             'proximityNear' : 2,
-            'proximityFar' : 1
+            'proximityFar' : 1,
         };
 
         // Excluded proximity value: (iOS string value)
@@ -105,7 +106,7 @@ angular.module('animist')
 
                 // Initialize BLE:  
                 $cordovaBluetoothLE.initialize({request: true}).then( 
-                    function(success){ }, 
+                    null, 
                     function(error)  { initialized = false; d.reject({where: where, error: error}) },
                     function(notify) { initialized = true; d.resolve() }
                 );
@@ -172,14 +173,22 @@ angular.module('animist')
                 midTransaction = true;
                 peripheral_uuid = endpointMap[beaconId];
 
-                // Any connection errors below propagate back to 
-                // this handler which broadcasts bleFailure and ends the session. 
+                // Any connection errors below bubble back up to 
+                // this handler which broadcasts noTxFound/bleFailure and 
+                // a) ends the session if no tx was found OR
+                // b) resets BLE if there was a hardware layer failure, 
+                //    allowing the device to attempt fresh connection. 
                 self.openLink(peripheral_uuid).then(
                     null,
-                    function(error){
-                        logger(where, error);
-                        $rootScope.$broadcast(events.bleFailure, {error: error});
-                        self.endSession();
+                    function(fail){
+                        
+                        if (fail.error === 'NO_TX_FOUND'){
+                            $rootScope.$broadcast(events.noTxFound, fail);
+                            self.endSession();
+                        } else {
+                            $rootScope.$broadcast(events.bleFailure, fail);
+                            self.reset();   
+                        }     
                     }
                 );
                 d.resolve(self.state.CONNECTING);
@@ -231,6 +240,7 @@ angular.module('animist')
             // Cached tx but session is stale. This means user connected but never got close
             // enough to endpoint to meet the contract req. Start again w/ a hard reset.
             } else if (hasTimedOut()){
+
                 self.reset();
                 d.resolve();
 
@@ -253,6 +263,7 @@ angular.module('animist')
             
             // Cached but proximity is wrong: Stay closed, keep cycling.
             } else {
+                
                 d.resolve(self.peripheral);
             }   
             
@@ -260,7 +271,7 @@ angular.module('animist')
         }
 
         self.submitTx = function(tx){
-        
+            
             var out = {};
 
             // Case: User can sign their own tx.
@@ -296,6 +307,7 @@ angular.module('animist')
             // Case: No one here is authorized (Bad api key etc . . .)
             // Broadcasts unauthorized error
             } else {
+
                 $rootScope.$broadcast( events.unauthorizedTx );
                 self.endSession();
             }

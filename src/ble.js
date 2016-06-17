@@ -77,20 +77,22 @@ angular.module('animist')
         var self = this;
 
         self.peripheral = {}; // The animist endpoint client connects to.
-        self.proximity; // Current proximity passed to us by AnimistBeacon via listen()
-        
+        self.proximity;       // Current proximity passed to us by AnimistBeacon via listen()
+     
         // State values that can be tested against in the listen()
         // resolve/reject callbacks
-        self.state = {
+        self.stateMap = {
             PROXIMITY_UNKNOWN: 0,
             TRANSACTING: 1,
             NOT_ANIMIST: 3,
-            CONNECTING: 4, 
+            CACHED: 4, 
             COMPLETED: 5,
-            INITIALIZING: 6,
-            BLE_INIT_FAIL: 7
-
+            NOT_INITIALIZED: 6,
+            INITIALIZED: 7
         };
+
+        // Initial state
+        self.state = self.stateMap['NOT_INITIALIZED'];
 
         // initialize(): Must be called before listen() can begin. Validates user
         // object and hardware inits via $cordovaBLE
@@ -104,11 +106,17 @@ angular.module('animist')
             if (AnimistAccount.initialized) {
                 user = AnimistAccount.user;
 
-                // Initialize BLE:  
+                // $cordova initialize:  
                 $cordovaBluetoothLE.initialize({request: true}).then( 
                     null, 
-                    function(error)  { initialized = false; d.reject({where: where, error: error}) },
-                    function(notify) { initialized = true; d.resolve() }
+                    function(error)  { 
+                        self.state = self.stateMap['NOT_INITIALIZED'];
+                        d.reject({where: where, error: error}) 
+                    },
+                    function(notify) { 
+                        self.state = self.stateMap['INITIALIZED'];
+                        d.resolve() 
+                    }
                 );
             } else {
                 d.reject({where: where, error: userError});
@@ -117,24 +125,7 @@ angular.module('animist')
             return d.promise;
         };
 
-        // reset(): Called in the exit_region callback of AnimistBeacon OR when a 
-        // connection times out - resets all the state variables and enables 
-        // a virgin connection. BLE remains initialized though. . . 
-        self.reset = function(){
-
-            var where = "AnimistBLE:reset: ";
-
-            $cordovaBluetoothLE.close({address: self.peripheral.address}).
-                then().finally(function(result){
-
-                    self.peripheral = {}; 
-                    completed = false;
-                    midTransaction = false;
-                    logger(where, result); 
-                }
-            );
-        };
-
+        /****** REWRITING THIS NOW *******/
         // listen(): This gets hit continuously in the Beacon capture callback and 
         // 'gate keeps' the peripheral connection. Rejects if beaconId doesn't map to known 
         // animist signal or if the module failed to initalize. Resolves immediately if we 
@@ -142,63 +133,61 @@ angular.module('animist')
         // forwards to openLink() to begin/complete endpoint transmission. 
         self.listen = function(beaconId, proximity){
 
-            var peripheral_uuid;
+            var noTx = 'NO_TX_FOUND';
             var where = 'AnimistBLE:listen: ';
             var d = $q.defer();
             
-            self.proximity = proximity;
-            
-            // Verify initialization or initialize.
-            if (!initialized){
-                self.initialize().then(
-                    function(){d.resolve(self.state.INITIALIZING)},
-                    function(){d.reject(self.state.BLE_INIT_FAIL)}
-                );
+            if (canOpenLink()){
+                verifyIsAnimist(beaconId);
+                verifyProximity(proximity);
+            }
 
-            // Return immediately if we are already connected/connecting 
-            } else if ( midTransaction ){
-                d.resolve(self.state.TRANSACTING);
+            switch(self.state){
 
-            // Verify device is meaningfully in range
-            } else if ( self.proximity === unknown ){
-                d.reject(self.state.PROXIMITY_UNKNOWN);
+                case TRANSACTING: 
+                    d.resolve(self.state); 
+                    break;
 
-            // Verify beacon is Animist
-            } else if ( !isAnimistSignal(beaconId)){
-                d.reject(self.state.NOT_ANIMIST);
+                case COMPLETED: 
+                    d.resolve(self.state);
+                    break;
 
-            // Connect if allowed & resolve immediately
-            } else if ( !completed ){
-                
-                midTransaction = true;
-                peripheral_uuid = endpointMap[beaconId];
+                case NOT_INITIALIZED:
+                    d.reject(self.state);
+                    break;
+
+                case NOT_ANIMIST:
+                    d.reject(self.state);
+                    break;
+
+                case PROXIMITY_UNKNOWN:
+                    d.reject(self.state);
+                    break;
 
                 // Any connection errors below bubble back up to 
-                // this handler which broadcasts noTxFound/bleFailure and 
-                // a) ends the session if no tx was found OR
-                // b) resets BLE if there was a hardware layer failure, 
+                // this handler which broadcasts either 
+                // a) noTxFound and ends the session OR
+                // b) bleFailure and resets BLE on hardware layer failure, 
                 //    allowing the device to attempt fresh connection. 
-                self.openLink(peripheral_uuid).then(
-                    null,
-                    function(fail){
-                        
-                        if (fail.error === 'NO_TX_FOUND'){
+                default:
+
+                    self.state = self.stateMap['TRANSACTING'];
+
+                    self.openLink(beaconId).then( null, function(fail){
+                            
+                        if (fail.error === noTx){
                             $rootScope.$broadcast(events.noTxFound, fail);
                             self.endSession();
                         } else {
                             $rootScope.$broadcast(events.bleFailure, fail);
                             self.reset();   
                         }     
-                    }
-                );
-                d.resolve(self.state.CONNECTING);
+                    });
+                    d.resolve(self.state);
 
-            // OR finished
-            } else {
-                d.resolve(self.state.COMPLETED);
             }
-
             return d.promise;
+
         }
 
         // -------------------------------------------------------------------------
@@ -206,10 +195,11 @@ angular.module('animist')
         // -------------------------------------------------------------------------
 
         // openLink(): Called by listen() . . . . 
-        self.openLink = function( uuid ){
+        self.openLink = function( beaconId ){
 
             var where = 'AnimistBLE:openLink: ';
             var d = $q.defer();
+            var uuid = endpointMap[beaconId];
             
             // First peripheral connection or session timed-out.
             if (!wasConnected()){
@@ -253,7 +243,7 @@ angular.module('animist')
                     self.submitTx(self.peripheral.tx);
                     
                     // Waiting for the txConfirm 
-                    // events w/ their txHashes. SubmitTx 
+                    // event w/ its txHash. SubmitTx 
                     // will manage closing everything down on
                     // success or failure.
 
@@ -263,8 +253,8 @@ angular.module('animist')
             
             // Cached but proximity is wrong: Stay closed, keep cycling.
             } else {
-                
-                d.resolve(self.peripheral);
+                self.state = self.stateMap['CACHED'];
+                d.resolve();
             }   
             
             return d.promise;
@@ -415,17 +405,16 @@ angular.module('animist')
         };
 
         // close(): Called on its own when a transaction is first discovered but the 
-        // the proximity requirement hasn't been met. Client will continue to ping us
-        // w/ new proximity readings which we parse in openLink() to decide if we
-        // should reconnect
+        // the proximity requirement hasn't been met. Closing frees up the endpoint 
+        // for other clients and minimizes likelyhood of our connection timing out. 
+        // AnimistBeacon will continue to ping us w/ new proximity 
+        // readings; these get parsed in openLink() to determine if we should reconnect. 
         self.close = function(){
             var where = "AnimistBLE:close: ";
             var param = { address: self.peripheral.address };
 
-            $cordovaBluetoothLE.close(param).then().finally(
-                function(){ 
-                    midTransaction = false; 
-                    //logger(where, null); 
+            $cordovaBluetoothLE.close(param).then().finally( function(){ 
+                    self.state = self.stateMap['CACHED'];
                 }
             );
         };
@@ -434,9 +423,30 @@ angular.module('animist')
         // was found. Stops any reconnection attempt while client is in current 
         // beacon region. 
         self.endSession = function(){
-            completed = true;
-            midTransaction = false;
-            close();
+            
+            var param = { address: self.peripheral.address };
+
+            $cordovaBluetoothLE.close(param).then().finally( function(){ 
+                    self.state = self.stateMap['COMPLETED'];
+                }
+            );
+        };
+
+        // reset(): Called in the exit_region callback of AnimistBeacon OR when a 
+        // sessionId times out, or on connection error - resets all the state variables 
+        // and enables a virgin connection. BLE remains initialized.
+        self.reset = function(){
+
+            var where = "AnimistBLE:reset: ";
+
+            $cordovaBluetoothLE.close({address: self.peripheral.address}).
+                then().finally(function(result){
+
+                    self.peripheral = {}; 
+                    self.state = self.stateMap['INITIALIZED'];
+                    logger(where, result); 
+                }
+            );
         };
 
         // ----------------Characteristic Subscriptions/Reads/Writes -----------------------------
@@ -567,6 +577,7 @@ angular.module('animist')
 
         // --------------------- Utilities --------------------------------
 
+
         function proximityMatch(tx){
             return ( tx && (proximityWeights[self.proximity] >= proximityWeights[tx.proximity]) );
         }
@@ -579,10 +590,24 @@ angular.module('animist')
             return (Date.now() > self.peripheral.tx.expires);
         }
 
-        // isAnimistSignal: 
-        function isAnimistSignal(uuid){
-            return endpointMap.hasOwnProperty(uuid);
+        function canOpenLink(){
+            return (!(self.state === self.stateMap['TRANSACTING'] || self.state === self.stateMap['COMPLETED']));
         }
+
+        // isAnimistSignal: 
+        function verifyIsAnimist(uuid){
+            if (!endpointMap.hasOwnProperty(uuid))
+                self.state = self.stateMap['NOT_ANIMIST'];
+        };
+
+        function verifyProximity(val){
+
+            if( !(val === 'proximityNear') || !(val === 'proximityImmediate') || !(val === 'proximityFar') ){
+                self.state = self.stateMap['PROXIMITY_UNKNOWN'];
+             } else { 
+                self.proximity = proximity;
+            }
+        };
 
         function encode(msg){
             msg = JSON.stringify(msg);

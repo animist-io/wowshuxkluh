@@ -689,5 +689,12 @@ describe('AnimistBLE Service', function(){
 
    });
 
+   // $on('Animist:receivedTx'): Handles the response to a successful tx retrieval. Tx proximity
+   // requirement is checked and if ok, tx is passed to submitTx for processing, otherwise BLE
+   // closes the connection to conserve resources and allow other clients to connect to the peripheral.
+   describe("$on(): Animist:receivedTx", function(){
+
+   })
+
    
 });

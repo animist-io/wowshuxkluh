@@ -32,15 +32,15 @@ describe('AnimistBLE Service', function(){
    // Public constants
    it('should define constants that expose the services state to the listen() callback', function(){
       
-      expect(AnimistBLE.state.PROXIMITY_UNKNOWN).toBe(0);
-      expect(AnimistBLE.state.TRANSACTING).toBe(1);
-      expect(AnimistBLE.state.NOT_ANIMIST).toBe(3);
-      expect(AnimistBLE.state.CONNECTING).toBe(4);
-      expect(AnimistBLE.state.COMPLETED).toBe(5);
-      expect(AnimistBLE.state.INITIALIZING).toBe(6);
-      expect(AnimistBLE.state.BLE_INIT_FAIL).toBe(7);
+      expect(AnimistBLE.stateMap.PROXIMITY_UNKNOWN).toBe(0);
+      expect(AnimistBLE.stateMap.TRANSACTING).toBe(1);
+      expect(AnimistBLE.stateMap.NOT_ANIMIST).toBe(3);
+      expect(AnimistBLE.stateMap.CACHED).toBe(4);
+      expect(AnimistBLE.stateMap.COMPLETED).toBe(5);
+      expect(AnimistBLE.stateMap.NOT_INITIALIZED).toBe(6);
+      expect(AnimistBLE.stateMap.INITIALIZED).toBe(7);
             
-      expect(Object.keys(AnimistBLE.state).length).toBe(7);
+      expect(Object.keys(AnimistBLE.stateMap).length).toBe(7);
 
    });
 
@@ -57,33 +57,43 @@ describe('AnimistBLE Service', function(){
 
       it('should initialize $cordovaBluetoothLE', function(){
 
-         spyOn(AnimistBLE, 'listen').and.callThrough();
+         /*spyOn(AnimistBLE, 'listen').and.callThrough();
          spyOn($ble, 'initialize').and.callThrough();
          promise = AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
-         $timeout.flush();
+         $timeout.flush();*/
 
+         spyOn($ble, 'initialize').and.callThrough();
+         promise = AnimistBLE.initialize();
+         $scope.$digest();
+         $timeout.flush();
+         //$scope.$digest();
+   
          expect($ble.initialize).toHaveBeenCalledWith(init_params);
          expect(promise.$$state.status).toEqual(1);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.INITIALIZING);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.INITIALIZED);
 
       });
 
       it('should enable subsequent calls to listen() on successful BLE init', function(){
 
+         spyOn(AnimistBLE, 'initialize').and.callThrough();
          spyOn(AnimistBLE, 'listen').and.callThrough();
          spyOn(AnimistBLE, 'openLink').and.callThrough();
          spyOn($ble, 'initialize').and.callThrough();
 
          // Initial call
+         AnimistBLE.initialize();
          AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
          $timeout.flush();
 
          // Subsequent call
          promise = AnimistBLE.listen(beaconId, 'proximityNear' );
+         $scope.$digest();
          expect(promise.$$state.status).toEqual(1);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.CONNECTING);
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.TRANSACTING);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.TRANSACTING);
          
          expect(AnimistBLE.openLink).toHaveBeenCalled();
 
@@ -99,19 +109,19 @@ describe('AnimistBLE Service', function(){
          // Initial call
          promise = AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
-         $timeout.flush()
-
+   
          expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.BLE_INIT_FAIL);
-         
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.NOT_INITIALIZED);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.NOT_INITIALIZED);
 
          // Subsequent call
          promise = AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
-         $timeout.flush()
+
          expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.BLE_INIT_FAIL);
-         
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.NOT_INITIALIZED);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.NOT_INITIALIZED);
+
          expect(AnimistBLE.openLink).not.toHaveBeenCalled();
 
       });
@@ -128,7 +138,9 @@ describe('AnimistBLE Service', function(){
          beaconId = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
 
          // Pre-run initialize()
+         spyOn(AnimistBLE, 'initialize').and.callThrough();
          spyOn(AnimistBLE, 'listen').and.callThrough();
+         AnimistBLE.initialize();
          AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
          $timeout.flush()
@@ -144,14 +156,15 @@ describe('AnimistBLE Service', function(){
          $scope.$digest();
 
          expect(promise.$$state.status).toBe(2);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.NOT_ANIMIST); 
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.NOT_ANIMIST); 
 
          // Success case
+         AnimistBLE.state = AnimistBLE.stateMap.INITIALIZED;
          promise = AnimistBLE.listen(beaconId, 'proximityNear' );
          $scope.$digest();
 
          expect(promise.$$state.status).toBe(1);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.CONNECTING); 
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.TRANSACTING); 
 
       });
       
@@ -161,7 +174,7 @@ describe('AnimistBLE Service', function(){
          $scope.$digest();
 
          expect(promise.$$state.status).toBe(2);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.PROXIMITY_UNKNOWN); 
+         expect(promise.$$state.value).toEqual(AnimistBLE.stateMap.PROXIMITY_UNKNOWN); 
       
       });
 
@@ -177,7 +190,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.listen(beaconId, 'proximityNear');
          $scope.$digest();
          expect(promise.$$state.status).toBe(1);
-         expect(promise.$$state.value).toEqual(AnimistBLE.state.TRANSACTING);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.TRANSACTING);
 
          expect(AnimistBLE.openLink).not.toHaveBeenCalled();
 
@@ -235,11 +248,12 @@ describe('AnimistBLE Service', function(){
    // is attempting to submit it.   
    describe('openLink(beacon_uuid )', function(){
 
-      var service_uuid, ble_address, pin, expected_request, promise;
+      var beacon_id, service_uuid, ble_address, pin, expected_request, promise;
 
       beforeEach(function(){
 
-         service_uuid = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         beacon_id = '4F7C5946-87BB-4C50-8051-D503CEBA2F19';
+         service_uuid = "05DEE885-E723-438F-B733-409E4DBFA694";
          ble_address = 'B70DCC59-4B65-C819-1C2C-D32B7FA0369A'; // From mocks: scanResult
          pin = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p"; // From mocks: pinResult
 
@@ -261,7 +275,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.emulateHasTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         promise = AnimistBLE.openLink(beacon_id, 'proximityNear');
          $timeout.flush();
 
          expect(AnimistBLE.scan).toHaveBeenCalledWith(service_uuid);
@@ -291,7 +305,7 @@ describe('AnimistBLE Service', function(){
 
          spyOn($ble, 'read').and.callThrough();
 
-         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         promise = AnimistBLE.openLink(beacon_id, 'proximityNear');
          $timeout.flush();
 
          expect($ble.read).toHaveBeenCalledWith(expected_request);
@@ -313,7 +327,7 @@ describe('AnimistBLE Service', function(){
 
          spyOn($ble, 'subscribe').and.callThrough();
 
-         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         promise = AnimistBLE.openLink(beacon_id, 'proximityNear');
          $timeout.flush();
 
          expect($ble.subscribe).toHaveBeenCalledWith(expected_request);
@@ -327,7 +341,7 @@ describe('AnimistBLE Service', function(){
          $ble.emulateHasTx = true;
          spyOn($scope, '$broadcast');
 
-         promise = AnimistBLE.openLink(service_uuid, 'proximityNear');
+         promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:receivedTx');
@@ -362,7 +376,7 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should check cur. proximity against cached requirement & resolve if too far away)', function(){
+      it('should resolve if cur. proximity wrong and listen loop should continue to cycle', function(){
 
          AnimistBLE.peripheral = {
             address: ble_address,
@@ -377,11 +391,20 @@ describe('AnimistBLE Service', function(){
          // Should fail: Far not near enough
          AnimistBLE.proximity = 'proximityFar';
          
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
 
-         expect(promise.$$state.status).toEqual(1);
+         expect(promise.$$state.status).not.toEqual(2); // Shouldn't reject
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.CACHED);
          expect(AnimistBLE.connect).not.toHaveBeenCalled();
+
+         // Should succeed: This proves that loop is still open after the kickback.
+         AnimistBLE.proximity = 'proximityNear';
+         promise = AnimistBLE.openLink(beacon_id);
+         $scope.$digest();
+
+         expect(AnimistBLE.connect).toHaveBeenCalled()
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.TRANSACTING);
 
       });
 
@@ -401,7 +424,7 @@ describe('AnimistBLE Service', function(){
 
          // Should succeed: Immediate closer than near
          AnimistBLE.proximity = 'proximityImmediate';
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -419,7 +442,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.throwsScan = true;
 
-         promise = AnimistBLE.openLink(service_uuid);    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);     
@@ -431,7 +454,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.throwsConnect = true;
 
-         promise = AnimistBLE.openLink(service_uuid);    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);     
@@ -443,7 +466,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.throwsDiscover = true;
 
-         promise = AnimistBLE.openLink(service_uuid);    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);   
@@ -455,7 +478,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.throwsRead = true;
 
-         promise = AnimistBLE.openLink(service_uuid);    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);   
@@ -467,7 +490,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {};
          $ble.throwsSubscribe = true;
 
-         promise = AnimistBLE.openLink(service_uuid);    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);
@@ -481,7 +504,7 @@ describe('AnimistBLE Service', function(){
          $ble.throwsWrite = true;
          $ble.emulateHasTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid);   
+         promise = AnimistBLE.openLink(beacon_id);   
          $scope.$digest();  
          $timeout.flush();
 
@@ -495,7 +518,7 @@ describe('AnimistBLE Service', function(){
          $ble.throwsNOTX = true;
          $ble.emulateHasTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();    
          $timeout.flush();
 
@@ -509,11 +532,12 @@ describe('AnimistBLE Service', function(){
    // submitTx(tx): A controller that manages final transaction writes and auth requests to 
    // the endpoint and wraps the session up on success/failure.
    describe('submitTx(tx)', function(){
-      var service_uuid, ble_address, pin, expected_request, promise;
+      var beacon_id, service_uuid, ble_address, pin, expected_request, promise;
 
       beforeEach(function(){
 
-         service_uuid = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         beacon_id = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+         service_uuid = "05DEE885-E723-438F-B733-409E4DBFA694";
          ble_address = 'B70DCC59-4B65-C819-1C2C-D32B7FA0369A'; // From mocks: scanResult
          pin = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p"; // From mocks: pinResult
 
@@ -554,7 +578,7 @@ describe('AnimistBLE Service', function(){
          // User has authority
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -570,7 +594,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
          $ble.emulateWriteTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -595,7 +619,7 @@ describe('AnimistBLE Service', function(){
          $ble.emulateWriteTx = true;
          $ble.throwsSubscribe = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -620,7 +644,7 @@ describe('AnimistBLE Service', function(){
          // User has authority
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -636,7 +660,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
          $ble.emulateWriteTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -661,7 +685,7 @@ describe('AnimistBLE Service', function(){
          $ble.emulateWriteTx = true;
          $ble.throwsSubscribe = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 
@@ -679,7 +703,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral.tx.authority = "jsdklfj;lja";
          $ble.emulateWriteTx = true;
 
-         promise = AnimistBLE.openLink(service_uuid);
+         promise = AnimistBLE.openLink(beacon_id);
          $scope.$digest();
          $timeout.flush();
 

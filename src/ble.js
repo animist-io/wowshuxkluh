@@ -92,7 +92,7 @@ angular.module('animist')
         };
 
         // Initial state
-        self.state = self.stateMap['NOT_INITIALIZED'];
+        self.state = self.stateMap.NOT_INITIALIZED;
 
         // initialize(): Must be called before listen() can begin. Validates user
         // object and hardware inits via $cordovaBLE
@@ -110,12 +110,12 @@ angular.module('animist')
                 $cordovaBluetoothLE.initialize({request: true}).then( 
                     null, 
                     function(error)  { 
-                        self.state = self.stateMap['NOT_INITIALIZED'];
+                        self.state = self.stateMap.NOT_INITIALIZED;
                         d.reject({where: where, error: error}) 
                     },
                     function(notify) { 
-                        self.state = self.stateMap['INITIALIZED'];
-                        d.resolve() 
+                        self.state = self.stateMap.INITIALIZED;
+                        d.resolve(); 
                     }
                 );
             } else {
@@ -133,35 +133,34 @@ angular.module('animist')
         // forwards to openLink() to begin/complete endpoint transmission. 
         self.listen = function(beaconId, proximity){
 
-            var noTx = 'NO_TX_FOUND';
+            var NO_TX = 'NO_TX_FOUND';
             var where = 'AnimistBLE:listen: ';
+
             var d = $q.defer();
             
-            if (canOpenLink()){
-                verifyIsAnimist(beaconId);
-                verifyProximity(proximity);
-            }
+            var map = self.stateMap;
+            var state = canOpenLink(beaconId, proximity);
+            
+            switch( state ){
 
-            switch(self.state){
-
-                case TRANSACTING: 
+                case map.TRANSACTING: 
                     d.resolve(self.state); 
                     break;
 
-                case COMPLETED: 
+                case map.COMPLETED: 
                     d.resolve(self.state);
                     break;
 
-                case NOT_INITIALIZED:
+                case map.NOT_INITIALIZED:
                     d.reject(self.state);
                     break;
 
-                case NOT_ANIMIST:
-                    d.reject(self.state);
+                case map.NOT_ANIMIST:
+                    d.reject(map.NOT_ANIMIST);
                     break;
 
-                case PROXIMITY_UNKNOWN:
-                    d.reject(self.state);
+                case map.PROXIMITY_UNKNOWN:
+                    d.reject(map.PROXIMITY_UNKNOWN);
                     break;
 
                 // Any connection errors below bubble back up to 
@@ -171,11 +170,12 @@ angular.module('animist')
                 //    allowing the device to attempt fresh connection. 
                 default:
 
-                    self.state = self.stateMap['TRANSACTING'];
+                    self.state = map.TRANSACTING;
+                    self.proximity = proximity;
 
                     self.openLink(beaconId).then( null, function(fail){
                             
-                        if (fail.error === noTx){
+                        if (fail.error === NO_TX){
                             $rootScope.$broadcast(events.noTxFound, fail);
                             self.endSession();
                         } else {
@@ -253,7 +253,7 @@ angular.module('animist')
             
             // Cached but proximity is wrong: Stay closed, keep cycling.
             } else {
-                self.state = self.stateMap['CACHED'];
+                self.state = self.stateMap.CACHED;
                 d.resolve();
             }   
             
@@ -414,7 +414,7 @@ angular.module('animist')
             var param = { address: self.peripheral.address };
 
             $cordovaBluetoothLE.close(param).then().finally( function(){ 
-                    self.state = self.stateMap['CACHED'];
+                    self.state = self.stateMap.CACHED;
                 }
             );
         };
@@ -427,7 +427,7 @@ angular.module('animist')
             var param = { address: self.peripheral.address };
 
             $cordovaBluetoothLE.close(param).then().finally( function(){ 
-                    self.state = self.stateMap['COMPLETED'];
+                    self.state = self.stateMap.COMPLETED;
                 }
             );
         };
@@ -443,7 +443,7 @@ angular.module('animist')
                 then().finally(function(result){
 
                     self.peripheral = {}; 
-                    self.state = self.stateMap['INITIALIZED'];
+                    self.state = self.stateMap.INITIALIZED;
                     logger(where, result); 
                 }
             );
@@ -590,23 +590,26 @@ angular.module('animist')
             return (Date.now() > self.peripheral.tx.expires);
         }
 
-        function canOpenLink(){
-            return (!(self.state === self.stateMap['TRANSACTING'] || self.state === self.stateMap['COMPLETED']));
+        function canOpenLink( beaconId, proximity ){
+            if (self.state === self.stateMap.TRANSACTING) return self.state; 
+            if (self.state === self.stateMap.COMPLETED)   return self.state;
+            if (!verifyIsAnimist(beaconId))               return self.stateMap.NOT_ANIMIST;
+            if (!verifyProximity(proximity))              return self.stateMap.PROXIMITY_UNKNOWN;
+
+            return self.state;
         }
 
         // isAnimistSignal: 
         function verifyIsAnimist(uuid){
-            if (!endpointMap.hasOwnProperty(uuid))
-                self.state = self.stateMap['NOT_ANIMIST'];
+            return endpointMap.hasOwnProperty(uuid);
         };
 
         function verifyProximity(val){
 
-            if( !(val === 'proximityNear') || !(val === 'proximityImmediate') || !(val === 'proximityFar') ){
-                self.state = self.stateMap['PROXIMITY_UNKNOWN'];
-             } else { 
-                self.proximity = proximity;
-            }
+            return ( val === 'proximityImmediate' || 
+                     val === 'proximityNear' ||
+                     val === 'proximityFar' );
+
         };
 
         function encode(msg){

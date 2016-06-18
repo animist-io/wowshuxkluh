@@ -26,11 +26,11 @@ module.exports = function(config) {
          "src/beacon.js",
          "src/ble.js",
 
-         //"tests/animist.mocks.js",
-         //"tests/bluetooth.spec.js",
+         "tests/animist.mocks.js",
+         "tests/bluetooth.spec.js",
          //"tests/beacon.spec.js"
 
-         "tests/*.js"
+         //"tests/*.js"
       ],
 
 

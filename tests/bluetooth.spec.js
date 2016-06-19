@@ -57,17 +57,10 @@ describe('AnimistBLE Service', function(){
 
       it('should initialize $cordovaBluetoothLE', function(){
 
-         /*spyOn(AnimistBLE, 'listen').and.callThrough();
-         spyOn($ble, 'initialize').and.callThrough();
-         promise = AnimistBLE.listen(beaconId, 'proximityNear' );
-         $scope.$digest();
-         $timeout.flush();*/
-
+   
          spyOn($ble, 'initialize').and.callThrough();
          promise = AnimistBLE.initialize();
-         $scope.$digest();
          $timeout.flush();
-         //$scope.$digest();
    
          expect($ble.initialize).toHaveBeenCalledWith(init_params);
          expect(promise.$$state.status).toEqual(1);
@@ -85,7 +78,6 @@ describe('AnimistBLE Service', function(){
          // Initial call
          AnimistBLE.initialize();
          AnimistBLE.listen(beaconId, 'proximityNear' );
-         $scope.$digest();
          $timeout.flush();
 
          // Subsequent call
@@ -142,7 +134,6 @@ describe('AnimistBLE Service', function(){
          spyOn(AnimistBLE, 'listen').and.callThrough();
          AnimistBLE.initialize();
          AnimistBLE.listen(beaconId, 'proximityNear' );
-         $scope.$digest();
          $timeout.flush()
 
       });
@@ -204,7 +195,7 @@ describe('AnimistBLE Service', function(){
 
       it('should broadcast "Animist:bleFailure" if link fails and do a hard reset', function(){
 
-         var expected_error = { where : 'AnimistBLE:scan: ', error : { error : 'failed' } }
+         var expected_error = { where : 'AnimistBLE:scanConnectAndDiscover: ', error : { error : 'failed' } }
          
          // Trigger error
          $ble.throwsScan = true;
@@ -213,7 +204,6 @@ describe('AnimistBLE Service', function(){
          spyOn(AnimistBLE, 'reset');
 
          AnimistBLE.listen(beaconId, 'proximityNear');
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:bleFailure', expected_error );
@@ -233,7 +223,6 @@ describe('AnimistBLE Service', function(){
          spyOn(AnimistBLE, 'endSession');
 
          AnimistBLE.listen(beaconId, 'proximityNear');
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:noTxFound', expected_error);
@@ -259,8 +248,7 @@ describe('AnimistBLE Service', function(){
 
          AnimistBLE.initialize();
 
-         spyOn(AnimistBLE, 'scan').and.callThrough();
-         spyOn(AnimistBLE, 'connectAndDiscover').and.callThrough();
+         spyOn(AnimistBLE, 'scanConnectAndDiscover').and.callThrough();
          spyOn(AnimistBLE, 'readPin').and.callThrough();
          spyOn(AnimistBLE, 'subscribeHasTx').and.callThrough();
 
@@ -278,8 +266,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id, 'proximityNear');
          $timeout.flush();
 
-         expect(AnimistBLE.scan).toHaveBeenCalledWith(service_uuid);
-         expect(AnimistBLE.connectAndDiscover).toHaveBeenCalledWith(ble_address);
+         expect(AnimistBLE.scanConnectAndDiscover).toHaveBeenCalledWith(service_uuid);
          expect(AnimistBLE.readPin).toHaveBeenCalled();
          expect(AnimistBLE.subscribeHasTx).toHaveBeenCalled();
 
@@ -347,12 +334,6 @@ describe('AnimistBLE Service', function(){
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:receivedTx');
       });
 
-
-      it('should have some tests about handling the receivedTx event', function(){
-         expect('test written').toBe(true);
-      });
-
-
       // -------------------------------------------
       // Case: Reconnection Attempts w/ a cached tx
       // -------------------------------------------
@@ -398,9 +379,11 @@ describe('AnimistBLE Service', function(){
          expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.CACHED);
          expect(AnimistBLE.connect).not.toHaveBeenCalled();
 
-         // Should succeed: This proves that loop is still open after the kickback.
-         AnimistBLE.proximity = 'proximityNear';
-         promise = AnimistBLE.openLink(beacon_id);
+         // Simulated listen() w/ correct proximity should succeed: 
+         // This proves that loop is still open after the kickback.
+         AnimistBLE.initialized = true;
+
+         promise = AnimistBLE.listen(beacon_id, 'proximityNear');
          $scope.$digest();
 
          expect(AnimistBLE.connect).toHaveBeenCalled()
@@ -425,7 +408,6 @@ describe('AnimistBLE Service', function(){
          // Should succeed: Immediate closer than near
          AnimistBLE.proximity = 'proximityImmediate';
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect(AnimistBLE.connect).toHaveBeenCalledWith(AnimistBLE.peripheral.address);
@@ -433,9 +415,9 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      // ----------------------------
-      // Error state tests
-      // ----------------------------
+      // --------------------------------------------------------------------------------------
+      // $cordovaBluetoothLE errors: Verify these errors bubble back to openLink()
+      // --------------------------------------------------------------------------------------
 
       it('should reject on scan error', function(){
 
@@ -505,7 +487,6 @@ describe('AnimistBLE Service', function(){
          $ble.emulateHasTx = true;
 
          promise = AnimistBLE.openLink(beacon_id);   
-         $scope.$digest();  
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);
@@ -518,8 +499,7 @@ describe('AnimistBLE Service', function(){
          $ble.throwsNOTX = true;
          $ble.emulateHasTx = true;
 
-         promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();    
+         promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);
@@ -579,7 +559,6 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, signedTx_port_addr)
@@ -595,7 +574,6 @@ describe('AnimistBLE Service', function(){
          $ble.emulateWriteTx = true;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxSuccess', expected_hash);
@@ -620,7 +598,6 @@ describe('AnimistBLE Service', function(){
          $ble.throwsSubscribe = true;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxFailure', expected_error);
@@ -629,6 +606,7 @@ describe('AnimistBLE Service', function(){
 
       // -----------------------------------------------------------------------------------------------
       // Case: Another authority will sign tx elsewhere. Only asking endpoint to confirm user was here.
+      // e.g: authorize as a proximity oracle
       // -----------------------------------------------------------------------------------------------
 
       it('should sign/send pin to "297E3B0A-F353-4531-9D44-3686CC8C4036" if only requesting oracle auth.', function(){
@@ -641,11 +619,10 @@ describe('AnimistBLE Service', function(){
          // Hard coded signTx characteristic uuid
          var authTx_port_addr = '297E3B0A-F353-4531-9D44-3686CC8C4036'
 
-         // User has authority
+         // Remote agent has authority
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, authTx_port_addr)
@@ -656,12 +633,11 @@ describe('AnimistBLE Service', function(){
 
          var expected_hash = {txHash: $ble.mockWriteTxResult}
 
-         // Someone else has authority
+         // Remote agent has authority
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
          $ble.emulateWriteTx = true;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxSuccess', expected_hash);
@@ -680,13 +656,12 @@ describe('AnimistBLE Service', function(){
             }
          }
 
-         // Someone else has authority / subscription fails
+         // Remote agent has authority & subscription fails
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
          $ble.emulateWriteTx = true;
          $ble.throwsSubscribe = true;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxFailure', expected_error);
@@ -704,7 +679,6 @@ describe('AnimistBLE Service', function(){
          $ble.emulateWriteTx = true;
 
          promise = AnimistBLE.openLink(beacon_id);
-         $scope.$digest();
          $timeout.flush();
 
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:unauthorizedTx');
@@ -717,6 +691,52 @@ describe('AnimistBLE Service', function(){
    // requirement is checked and if ok, tx is passed to submitTx for processing, otherwise BLE
    // closes the connection to conserve resources and allow other clients to connect to the peripheral.
    describe("$on(): Animist:receivedTx", function(){
+
+
+      it('should submit the tx back to endpoint if tx was found and proximity req is met', function(){
+
+         spyOn(AnimistBLE, 'submitTx');
+
+         AnimistBLE.proximity = 'proximityNear';
+         AnimistBLE.peripheral = { tx: { proximity: 'proximityNear'}};
+
+         $scope.$broadcast('Animist:receivedTx');
+         $scope.$digest();
+
+         expect(AnimistBLE.submitTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx);
+
+      });
+
+      it('should close the connection if tx was found and proximity req is NOT met', function(){
+
+         spyOn(AnimistBLE, 'submitTx');
+         spyOn(AnimistBLE, 'close');
+
+         AnimistBLE.proximity = 'proximityFar';
+         AnimistBLE.peripheral = { tx: { proximity: 'proximityNear'}};
+
+         $scope.$broadcast('Animist:receivedTx');
+         $scope.$digest();
+
+         expect(AnimistBLE.submitTx).not.toHaveBeenCalled();
+         expect(AnimistBLE.close).toHaveBeenCalled();
+
+      });
+
+      it('should end the session if no tx was found', function(){
+
+         spyOn(AnimistBLE, 'endSession');
+         spyOn(AnimistBLE, 'submitTx');
+   
+         AnimistBLE.proximity = 'proximityFar';
+         AnimistBLE.peripheral = { tx: null };
+
+         $scope.$broadcast('Animist:receivedTx');
+         $scope.$digest();
+
+         expect(AnimistBLE.submitTx).not.toHaveBeenCalled();
+         expect(AnimistBLE.endSession).toHaveBeenCalled();
+      });
 
    })
 

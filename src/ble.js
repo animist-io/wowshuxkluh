@@ -447,6 +447,7 @@ angular.module('animist')
             var param = { address: self.peripheral.address };
 
             $cordovaBluetoothLE.close(param).then().finally( function(){ 
+                    self.peripheral = {}; 
                     self.state = self.stateMap.COMPLETED;
                 }
             );
@@ -465,15 +466,12 @@ angular.module('animist')
 
                 self.peripheral = {}; 
                 self.state = self.stateMap.INITIALIZED;
-                logger(where, result); 
-            });
-                    
+            });          
         };
 
         // ----------------Characteristic Subscriptions/Reads/Writes -----------------------------
         
-
-        // writeTx(out, dest): 'out' is a json object to transmitted. 'dest' is either the signedTx
+        // writeTx(out, dest): 'out' is a json object to be transmitted. 'dest' is either the signedTx
         // or authTx characteristic uuid. Subscribes to characteristic, writes out and waits 
         // for / resolves the Ethereum tx hash of completed transaction.
         self.writeTx = function(out, dest){

@@ -189,7 +189,16 @@ describe('AnimistBLE Service', function(){
 
       it('should resolve immediately if a transaction has already been completed this session', function(){
          
-         expect('test written').toBe(true);
+         // Simulate completed . . . 
+         spyOn(AnimistBLE, 'openLink').and.callThrough();
+         AnimistBLE.state = AnimistBLE.stateMap.COMPLETED;
+
+         promise = AnimistBLE.listen(beaconId, 'proximityNear');
+         $scope.$digest();
+         expect(promise.$$state.status).toBe(1);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.COMPLETED);
+
+         expect(AnimistBLE.openLink).not.toHaveBeenCalled();
 
       });
 
@@ -738,6 +747,63 @@ describe('AnimistBLE Service', function(){
          expect(AnimistBLE.endSession).toHaveBeenCalled();
       });
 
+   });
+
+   describe('close(), endSession(), reset()', function(){
+
+      var default_peripheral, expected_params;
+
+      beforeEach(function(){
+
+         default_peripheral = { address: 'anAddress', otherKeys: 'otherkeys' };
+         expected_params = { address: default_peripheral.address };
+         spyOn($ble, 'close').and.callThrough();
+      })
+
+      it('should $ble.close and set state to "CACHED" on close()', function(){
+         AnimistBLE.peripheral = default_peripheral;
+         AnimistBLE.state = 'testing';
+
+         AnimistBLE.close();
+         $scope.$digest();
+
+         expect($ble.close).toHaveBeenCalledWith(expected_params);
+         expect(AnimistBLE.peripheral).toEqual(default_peripheral);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.CACHED);
+
+      });
+
+      it('should $ble.close, wipe the peripheral & set state to "COMPLETED" on endSession()', function(){
+
+         var expected_peripheral = {};
+
+         AnimistBLE.peripheral = default_peripheral;
+         AnimistBLE.state = 'testing';
+
+         AnimistBLE.endSession();
+         $scope.$digest();
+         
+         expect($ble.close).toHaveBeenCalledWith(expected_params);
+         expect(AnimistBLE.peripheral).toEqual(expected_peripheral);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.COMPLETED);
+
+      });
+
+      it('should $ble.close, wipe the peripheral model & set state to "INITIALIZED" on reset()', function(){
+
+         var expected_peripheral = {};
+
+         AnimistBLE.peripheral = default_peripheral;
+         AnimistBLE.state = 'testing';
+
+         AnimistBLE.reset();
+         $scope.$digest();
+         
+         expect($ble.close).toHaveBeenCalledWith(expected_params);
+         expect(AnimistBLE.peripheral).toEqual(expected_peripheral);
+         expect(AnimistBLE.state).toEqual(AnimistBLE.stateMap.INITIALIZED);
+
+      });
    })
 
    

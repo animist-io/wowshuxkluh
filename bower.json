@@ -27,6 +27,14 @@
   "dependencies": {
     "angular-mocks": "~1.5.5",
     "angular-pouchdb": "~4.3.0",
-    "ngCordova": "~0.1.26-alpha"
+    "ngCordova": "~0.1.26-alpha",
+    "ng-cordova-bluetoothle": "git://github.com/randdusing/ng-cordova-bluetoothle.git#master",
+    "angular": "~1.5.7"
+  },
+  "resolutions": {
+    "angular": "~1.5.7"
+  },
+  "devDependencies": {
+    "angular": "~1.5.7"
   }
 }

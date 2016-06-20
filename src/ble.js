@@ -1,10 +1,47 @@
-// TO DO:
-// generateTx
-// Peripheral authTx, signTx 
-//(function(){
-
 "use strict"
-var ble_debug;
+
+/*--------------------------------------------------------------------------------------------------- 
+SERVICE: AnimistBLE
+Author: cgewecke June 2016
+
+This service manages communication between Animist accounts (AnimistAccount service in this 
+repo and and Animist endpoints (at: animist-io/whale-island) over Bluetooth LE. Basic design 
+as follows:
+
+1. Animist endpoints broadcast a peristent beacon signal which wakes animist mobile clients up,
+   triggering their beacon capture callback (that code is at AnimistBeacon). The callback
+   calls AnimistBLE method: listen( beaconId, proximity ) 
+
+2. AnimistBLE looks up the beacon uuid in an endpoint map and finds the service uuid for the 
+   bluetooth peripheral associated with it. It then connects to the peripheral and reads its
+   "pin" - a constantly changing string value which makes it slightly more difficult to spoof
+   the endpoint by recording transaction data and having it delivered by proxy in some leisurely way. 
+
+3. AnimistBLE signs the pin using eth-lightwallet utilities at AnimistAccount and writes this value to 
+   the endpoint's 'hasTx' characteristic. The endpoint extracts the public account address from the 
+   pin message and searches its database of extant contracts about itself for any that match  
+   the calling account. (There should only be one).
+
+4. The endpoint sends back an object consisting of contract code, a proximity requirement, a 
+   sessionId, a session expiration date, and the address specified as the contracts
+   'authority' e.g. the address the contract expects to sign the tx. 
+
+5. At this point there are two possiblities: 
+   a) The user can sign their own transaction. AnimistBLE signs and transmits. (This would be the 
+      case in an app where you placed a wager on a race from A to B with someone. 
+   
+   b) The app requires someone else sign. AnimistBLE asks the endpoint to write a tx to the blockchain
+      verifying it registered the clients presence at this location. (This would be the case in an 
+      app that used Animist to offer some reward to app users based on their behavior. In other words
+      the app developer is 'paying' and maintains its own Ethereum client in the cloud along with
+      its own keys (which it doesn't want to give to the client).
+   
+   c) NOT IMPLEMENTED - a feature that allows client to send code to cloud to be signed and 
+      returned to client who forwards it to the endpoint. One issue with this is the background run time
+      allowed on iOS which defaults to ~6 seconds. There might be ways around this and it might not 
+      be a problem on android. Another is whether there are security issues with having a signed
+      transaction pass back to the client who not actually be 'your' client if you got decompiled etc.   
+-----------------------------------------------------------------------------------------------------*/
 
 angular.module('animist')
   .service("AnimistBLE", AnimistBLE);

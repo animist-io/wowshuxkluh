@@ -30,7 +30,6 @@ module.exports = function(config) {
          "tests/bluetooth.spec.js",
          "tests/beacon.spec.js",
          "tests/accounts.spec.js"
-         //"tests/*.js"
       ],
 
       // list of files to exclude

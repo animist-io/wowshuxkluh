@@ -68,7 +68,7 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should enable subsequent calls to listen() on successful BLE init', function(){
+      it('should enable subsequent calls to listen() if successful', function(){
 
          spyOn(AnimistBLE, 'initialize').and.callThrough();
          spyOn(AnimistBLE, 'listen').and.callThrough();
@@ -91,7 +91,7 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should disable subsequent calls to listen() on BLE init failure', function(){
+      it('should disable subsequent calls to listen() if NOT successful', function(){
 
          $ble.throwsError = true;
          spyOn(AnimistBLE, 'listen').and.callThrough();
@@ -202,7 +202,7 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should broadcast "Animist:bleFailure" if link fails and do a hard reset', function(){
+      it('should broadcast "Animist:bleFailure" if connection fails and do a hard reset', function(){
 
          var expected_error = { where : 'AnimistBLE:scanConnectAndDiscover: ', error : { error : 'failed' } }
          
@@ -220,7 +220,7 @@ describe('AnimistBLE Service', function(){
          
       });
 
-      it('should broadcast "Animist:noTxFound" if no tx is found and end the session', function(){
+      it('should broadcast "Animist:noTxFound" if endpoint does not find a tx and end the session', function(){
 
          var expected_error = { where : 'AnimistBLE:subscribeHasTx: ', error : 'NO_TX_FOUND' };
 
@@ -260,6 +260,7 @@ describe('AnimistBLE Service', function(){
          spyOn(AnimistBLE, 'scanConnectAndDiscover').and.callThrough();
          spyOn(AnimistBLE, 'readPin').and.callThrough();
          spyOn(AnimistBLE, 'subscribeHasTx').and.callThrough();
+         spyOn($scope, '$broadcast');
 
       });
 
@@ -278,6 +279,7 @@ describe('AnimistBLE Service', function(){
          expect(AnimistBLE.scanConnectAndDiscover).toHaveBeenCalledWith(service_uuid);
          expect(AnimistBLE.readPin).toHaveBeenCalled();
          expect(AnimistBLE.subscribeHasTx).toHaveBeenCalled();
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:initiatedBLEConnection');
 
          expect(AnimistBLE.peripheral.address).toEqual(ble_address);
          expect(AnimistBLE.peripheral.service).toEqual(service_uuid);
@@ -335,7 +337,6 @@ describe('AnimistBLE Service', function(){
 
          AnimistBLE.peripheral = {};
          $ble.emulateHasTx = true;
-         spyOn($scope, '$broadcast');
 
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
@@ -939,6 +940,5 @@ describe('AnimistBLE Service', function(){
 
       });
    })
-
-   
+  
 });

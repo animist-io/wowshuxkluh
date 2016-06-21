@@ -16,8 +16,12 @@ Key issues here include:
 Cordova dependencies
 
 ```
+// BluetoothLE
 $ cordova plugin add cordova-plugin-bluetoothle
+// iBeacon
 $ cordova plugin add com.unarin.cordova.beacon
+// iOS Keychain
+cordova plugin add https://github.com/shazron/KeychainPlugin.git
 ```
 
 

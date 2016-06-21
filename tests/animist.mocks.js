@@ -75,7 +75,7 @@ angular.module('animistMocks', [])
 
 
         // Public Mock Data
-        self.mockHasTxResult = "{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
+        self.mockHasTxResult = "{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"state\":\"1\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
         self.mockWriteTxResult = "f88d028609184e72a000832dc6c0947764b6a2728a";
 
         // Private Mock data
@@ -88,7 +88,7 @@ angular.module('animistMocks', [])
         var hasTxRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock("{\"code\":\"606060405261038180610013600061037c565b")},
-            {status: 'notify', value: self.encodeMock("91905056\",\"proximity\":\"any")},
+            {status: 'notify', value: self.encodeMock("91905056\",\"proximity\":\"any\",\"state\":\"1")},
             {status: 'notify', value: self.encodeMock("\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}")},
             {status: 'notify', value: self.encodeMock("EOF")}
         ];

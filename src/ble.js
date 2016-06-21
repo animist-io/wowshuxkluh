@@ -4,46 +4,39 @@
 SERVICE: AnimistBLE
 Author: cgewecke June 2016
 
-This service manages communication between the mobile client and Animist endpoints 
+This service manages interactions between mobile clients and Animist IoT endpoints 
 (at: animist-io/whale-island) over Bluetooth LE. Design overview below:
 
-1. Endpoints broadcast a peristent beacon signal (see AnimistBeacon) which will wake a mobile client up
-   and trigger AnimistBLE.listen( beaconId, proximity ) in the client's beacon capture callback.  
+1. Endpoints broadcast a persistent beacon signal which will wake a mobile client up
+   and activate AnimistBLE via the client's beacon capture callback. (See AnimistBeacon )
 
-2. AnimistBLE looks up the beacon uuid in an endpoint map, finds the service uuid for the 
-   bluetooth peripheral associated with it, connects and reads its "pin". The pin is a constantly changing 
-   random string whose purpose is to make it harder to spoof the endpoint by recording endpoint emissions,
-   signing transaction data remotely and then delivering them by proxy in a leisurely / programmatic way. 
+2. AnimistBLE matches the beacon uuid to a pre-determined endpoint service uuid and uses this
+   to establish a BLE peripheral connection / read the endpoint's time-variant "pin".  
 
-3. AnimistBLE signs the pin using eth-lightwallet utilities at AnimistAccount and writes this value to 
+3. AnimistBLE signs the pin with the private key of the current AnimistAccount and writes this value to 
    the endpoint's 'hasTx' characteristic. The endpoint extracts the public account address from the 
-   pin message and searches its database of contracts about itself for any that match  
-   the calling account. (There should only be one).
+   pin message and searches its database of contracts for any that match the calling account. 
+   (There should only be one).
 
 4. The endpoint sends back an object consisting of contract code, a proximity requirement, a 
    sessionId, a session expiration date, and the address specified as the contracts
    'authority' e.g. the address the contract expects to sign the tx. 
 
-5. At this point there are three possiblities:  
+5. At this point ( assuming contract requirements about proximity are met ) there are three possiblities:  
 
-   a) The user is authorized to sign their own transaction: AnimistBLE signs w the user key and transmits. 
-     
-     (Use case: an app where the user placed a wager on a race from A to B with an opponent.) 
-   
-   b) Someone other than the user needs to sign the transaction - it gets sent off and returns
-      to the client signed. AnimistBLE submits this to the endpoint. 
+   a) The user is authorized to sign their own transaction: AnimistBLE transmits code signed w/ the user key,
+      and receives the Ethereum transaction hash for the mined operation. 
+    
+   b) Someone other than the user (like the App provider) needs to sign the transaction - it gets sent 
+      to the cloud and returns signed. AnimistBLE submits this to the endpoint and gets the hash. 
 
-      (Use case: an app that offered benefits to the user but wanted to maintain
-      an API key relationship with them. In other words the app provider is 'paying' or has
-      some other reason to view the user adversarially and maintains its own Ethereum signing facilities 
-      in the cloud.)
+   c) Like b), but the signed transaction will get submitted off device at another Ethereum node. AnimistBLE 
+      just asks the endpoint to write an authentication tx to the blockchain verifying the client's presence at 
+      this location. (Also gets a hash).
 
-   c) Like b) but the signed transaction will get submitted off device. AnimistBLE just asks 
-      the endpoint to write an authentication tx to the blockchain verifying the clients presence at 
-      this location. 
-
-      (Use case: Animist as oracle for arbitrary contracts managed elsewhere.) 
-
+For more on account details and client behavior re: contracts, see animist-io/wowshuxkluh/src/accounts.js
+For more on endpoint behavior see animist-io/whale-island
+For more on simple Animist contract patterns and contract generation tools, see animist-io/wallowa.
 -----------------------------------------------------------------------------------------------------*/
 
 angular.module('animist')
@@ -51,7 +44,7 @@ angular.module('animist')
 
     function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
 
-        // Local ref to AnimistAccount user, set in initalialize()
+        // Local ref to AnimistAccount user, set in initialize()
         var user = null; 
         
         // Events 
@@ -167,7 +160,8 @@ angular.module('animist')
         };
 
         // setCustomSignMethod(fn):
-        // Fn(tx) should accept a single tx object as a param: { code: '90909...', expires: '...', etc...} 
+        //
+        // fn(tx) should accept a single tx object as a param: { code: '90909...', expires: '...', etc...} 
         // and return a promise that resolves a string representing the signed code. This allows the app to pass
         // the tx off the device for remote signing and return it for local submission. Keep in mind
         // that background run times on iOS can be capped at ~7 seconds if the app is actively
@@ -265,14 +259,15 @@ angular.module('animist')
                 // Scan, discover and try to get tx
                 self.scanConnectAndDiscover(uuid).then(function(address){
       
+                    $rootScope.$broadcast(events.initiatedBLE);
+
                     // MAC address from the scan, service from our endpointMap
                     self.peripheral.address = address;
                     self.peripheral.service = uuid;
                     
                     self.readPin().then(function(){ 
                         self.subscribeHasTx().then(function(){
-
-                            $rootScope.$broadcast(events.initiatedBLE);
+                                    
                             d.resolve();
                         
                         }, function(e){ d.reject(e)}) 
@@ -323,7 +318,7 @@ angular.module('animist')
             // Broadcasts txHash of the signedTx or error
             if (tx.authority === user.address ) {
 
-                out.tx = user.generateTx();
+                out.tx = user.generateTx(tx.code, tx.state);
                 out.id = tx.sessionId;
 
                 self.writeTx(out, UUID.signTx).then(
@@ -636,6 +631,7 @@ angular.module('animist')
                         } else {
                             self.peripheral.tx = msg;
                             $rootScope.$broadcast( events.receivedTx );
+                            d.resolve();
                         }
                     };
                 }

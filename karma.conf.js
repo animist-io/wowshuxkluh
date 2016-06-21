@@ -27,10 +27,10 @@ module.exports = function(config) {
          "src/ble.js",
 
          "tests/animist.mocks.js",
-         //"tests/bluetooth.spec.js",
-         //"tests/beacon.spec.js"
-
-         "tests/*.js"
+         "tests/bluetooth.spec.js",
+         "tests/beacon.spec.js",
+         "tests/accounts.spec.js"
+         //"tests/*.js"
       ],
 
       // list of files to exclude

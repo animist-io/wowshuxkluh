@@ -4,43 +4,46 @@
 SERVICE: AnimistBLE
 Author: cgewecke June 2016
 
-This service manages communication between Animist accounts (AnimistAccount service in this 
-repo and and Animist endpoints (at: animist-io/whale-island) over Bluetooth LE. Basic design 
-as follows:
+This service manages communication between the mobile client and Animist endpoints 
+(at: animist-io/whale-island) over Bluetooth LE. Design overview below:
 
-1. Animist endpoints broadcast a peristent beacon signal which wakes animist mobile clients up,
-   triggering their beacon capture callback (that code is at AnimistBeacon). The callback
-   calls AnimistBLE method: listen( beaconId, proximity ) 
+1. Endpoints broadcast a peristent beacon signal (see AnimistBeacon) which will wake a mobile client up
+   and trigger AnimistBLE.listen( beaconId, proximity ) in the client's beacon capture callback.  
 
-2. AnimistBLE looks up the beacon uuid in an endpoint map and finds the service uuid for the 
-   bluetooth peripheral associated with it. It then connects to the peripheral and reads its
-   "pin" - a constantly changing string value which makes it slightly more difficult to spoof
-   the endpoint by recording transaction data and having it delivered by proxy in some leisurely way. 
+2. AnimistBLE looks up the beacon uuid in an endpoint map, finds the service uuid for the 
+   bluetooth peripheral associated with it, connects and reads its "pin". The pin is a constantly changing 
+   random string whose purpose is to make it harder to spoof the endpoint by recording endpoint emissions,
+   signing transaction data remotely and then delivering them by proxy in a leisurely / programmatic way. 
 
 3. AnimistBLE signs the pin using eth-lightwallet utilities at AnimistAccount and writes this value to 
    the endpoint's 'hasTx' characteristic. The endpoint extracts the public account address from the 
-   pin message and searches its database of extant contracts about itself for any that match  
+   pin message and searches its database of contracts about itself for any that match  
    the calling account. (There should only be one).
 
 4. The endpoint sends back an object consisting of contract code, a proximity requirement, a 
    sessionId, a session expiration date, and the address specified as the contracts
    'authority' e.g. the address the contract expects to sign the tx. 
 
-5. At this point there are two possiblities: 
-   a) The user can sign their own transaction. AnimistBLE signs and transmits. (This would be the 
-      case in an app where you placed a wager on a race from A to B with someone. 
+5. At this point there are three possiblities:  
+
+   a) The user is authorized to sign their own transaction: AnimistBLE signs w the user key and transmits. 
+     
+     (Use case: an app where the user placed a wager on a race from A to B with an opponent.) 
    
-   b) The app requires someone else sign. AnimistBLE asks the endpoint to write a tx to the blockchain
-      verifying it registered the clients presence at this location. (This would be the case in an 
-      app that used Animist to offer some reward to app users based on their behavior. In other words
-      the app developer is 'paying' and maintains its own Ethereum client in the cloud along with
-      its own keys (which it doesn't want to give to the client).
-   
-   c) NOT IMPLEMENTED - a feature that allows client to send code to cloud to be signed and 
-      returned to client who forwards it to the endpoint. One issue with this is the background run time
-      allowed on iOS which defaults to ~6 seconds. There might be ways around this and it might not 
-      be a problem on android. Another is whether there are security issues with having a signed
-      transaction pass back to the client who not actually be 'your' client if you got decompiled etc.   
+   b) Someone other than the user needs to sign the transaction - it gets sent off and returns
+      to the client signed. AnimistBLE submits this to the endpoint. 
+
+      (Use case: an app that offered benefits to the user but wanted to maintain
+      an API key relationship with them. In other words the app provider is 'paying' or has
+      some other reason to view the user adversarially and maintains its own Ethereum signing facilities 
+      in the cloud.)
+
+   c) Like b) but the signed transaction will get submitted off device. AnimistBLE just asks 
+      the endpoint to write an authentication tx to the blockchain verifying the clients presence at 
+      this location. 
+
+      (Use case: Animist as oracle for arbitrary contracts managed elsewhere.) 
+
 -----------------------------------------------------------------------------------------------------*/
 
 angular.module('animist')
@@ -53,9 +56,11 @@ angular.module('animist')
         
         // Events 
         var events = {
+            initiatedBLE: 'Animist:initiatedBLEConnection',
             receivedTx: 'Animist:receivedTx',
             signedTxSuccess: 'Animist:signedTxSuccess',
             signedTxFailure: 'Animist:signedTxFailure',
+            signedTxMethodFailure: 'Animist:signedTxMethodFailure',
             authTxSuccess: 'Animist:authTxSuccess',
             authTxFailure: 'Animist:authTxFailure',
             unauthorizedTx: 'Animist:unauthorizedTx',
@@ -102,14 +107,18 @@ angular.module('animist')
             'proximityFar' : 1,
         };
 
+        // Method returning a promise which overrides default signing methods in submit tx.
+        // Set via AnimistBLE.setCustomSignMethod()
+        var customSignMethod = undefined;
+
         // -------------------------------------------------------------------------
         // ------------------------------- API -------------------------------------
         // -------------------------------------------------------------------------
 
         var self = this;
 
-        self.peripheral = {}; // Obj representing the animist endpoint client we connect to.
-        self.proximity;       // Current proximity passed to us by AnimistBeacon via listen()
+        self.peripheral = {};  // Obj representing the animist endpoint client we connect to.
+        self.proximity;        // Current proximity passed to us by AnimistBeacon via listen()
      
         // State values that can be tested against in the listen()
         // resolve/reject callbacks or referenced directly in Angular / reactive uis
@@ -157,6 +166,20 @@ angular.module('animist')
             return d.promise;
         };
 
+        // setCustomSignMethod(fn):
+        // Fn(tx) should accept a single tx object as a param: { code: '90909...', expires: '...', etc...} 
+        // and return a promise that resolves a string representing the signed code. This allows the app to pass
+        // the tx off the device for remote signing and return it for local submission. Keep in mind
+        // that background run times on iOS can be capped at ~7 seconds if the app is actively
+        // backgrounded on the device. (They are closer to 90 sec if the app gets launched from
+        // death.) You can approximate your position in this time window by keeping track of the first 
+        // "Animist:initiatedBLEConnection" event and comparing it with present time. Rejecting from this
+        // method will endSession() e.g. client will not reconnect to peripheral while it is in the
+        // current beacon region unless you explicitly call AnimistBLE.reset();
+        self.setCustomSignMethod = function( fn ){
+            customSignMethod = fn;
+        }
+
         // listen(): Gets hit continuously in the Beacon capture callback and 
         // 'gate keeps' the endpoint connection. Rejects if beaconId doesn't map to known 
         // animist signal, proximity is unreadable, or if the module failed to initalize. 
@@ -197,11 +220,7 @@ angular.module('animist')
                     d.reject(map.PROXIMITY_UNKNOWN);
                     break;
 
-                // Any connection errors below bubble back up to 
-                // this handler which broadcasts either 
-                // a) noTxFound and ends the session OR
-                // b) bleFailure and resets BLE on hardware layer failure, 
-                //    allowing the device to attempt fresh connection. 
+                // Any connection errors below bubble back up to this handler 
                 default:
 
                     self.state = map.TRANSACTING;
@@ -225,15 +244,11 @@ angular.module('animist')
         }
 
         // -----------------------------------------------------------------------------------
-        // --- Public for Karma Testing / Code below not part of public API, except reset()  
-        // -----------------------------------------------------------------------------------
-
-        // -----------------------------------------------------------------------------------
-        // -------------------  Link and Tx Submission Controllers ---------------------------
+        // -------------------  Link and Tx Submission Mgmt ----------------------------------
         // -----------------------------------------------------------------------------------
 
         // openLink(): Called by listen(). 
-        // a) Attempts to open a new connection if session is fresh, OR
+        // a) Attempts to open a new connection if session is fresh & broadcasts initiatedBLE event, OR
         // b) closes the connection and resets if the session has timed out, OR 
         // c) reconnects if mobile client already got tx and has finally met proximity requirement, OR
         // d) does nothing if client has tx but still hasn't met a proximity requirement.
@@ -243,26 +258,22 @@ angular.module('animist')
             var d = $q.defer();
             var uuid = endpointMap[beaconId];
             
-            // Case: First peripheral connection or session timed-out.
+            // Case: First peripheral connection or session timed-out. Query endpoint
+            // for relevant tx and wait. Broadcast "Animist:initiatedBLEConnection".
             if (!wasConnected()){
                 
                 // Scan, discover and try to get tx
                 self.scanConnectAndDiscover(uuid).then(function(address){
-                        
-                    // Peripheral vals: 
+      
                     // MAC address from the scan, service from our endpointMap
                     self.peripheral.address = address;
                     self.peripheral.service = uuid;
                     
-                    // Setup Subscriptions
                     self.readPin().then(function(){ 
                         self.subscribeHasTx().then(function(){
 
+                            $rootScope.$broadcast(events.initiatedBLE);
                             d.resolve();
-
-                            // Waiting for the receivedTx event. 
-                            // Listen() is kicking everything back
-                            // while we are in mid-transaction.  
                         
                         }, function(e){ d.reject(e)}) 
                     }, function(e){ d.reject(e)}) 
@@ -276,19 +287,14 @@ angular.module('animist')
                 d.resolve();
 
             // Case: Cached, session current and we might reconnect w/ right proximity: 
-            // Check this, connect and submit cached tx
+            // Check this, connect and submit cached tx, then wait . . .
             } else if (proximityMatch(self.peripheral.tx )) {
 
                 self.connect(self.peripheral.address).then(function(){  
-                    self.submitTx(self.peripheral.tx);
+                    self.submitTx(self.peripheral.tx, customSignMethod );
                     
-                    // Waiting for the txConfirm 
-                    // event w/ its txHash. SubmitTx 
-                    // will manage closing everything down on
-                    // success or failure.
-
                     d.resolve();
-                    
+
                 }, function(e){ d.reject(e)}); 
             
             // Case: Cached but proximity is wrong: Stay closed, keep cycling.
@@ -307,29 +313,55 @@ angular.module('animist')
         //      will manage submitting the rest of tx elsewhere, OR
         // c) does nothing if there is no authority match. 
         //
-        // Ends session in all cases, including on error.
+        // Ends session on success & unauthorizedTx, resets on technical failure.
         // Broadcasts message specific to each of the above, including error.
-        self.submitTx = function(tx){
+        self.submitTx = function(tx, txMethod){
             
             var out = {};
 
             // Case: User can sign their own tx. Write tx & wait for response.
             // Broadcasts txHash of the signedTx or error
-            if (tx.authority === user.address) {
+            if (tx.authority === user.address ) {
 
+                out.tx = user.generateTx();
                 out.id = tx.sessionId;
-                /******* THIS NEEDS TO BE WRITTEN */
-                out.tx = user.generateTx(tx);
-                // ********************************
 
                 self.writeTx(out, UUID.signTx).then(
 
-                    function(txHash){ $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} )}, 
-                    function(error) { $rootScope.$broadcast( events.signedTxFailure, {error: error} )}
+                    function(txHash){ 
+                        $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} ); 
+                        self.endSession() }, 
+                    function(error) {
+                         $rootScope.$broadcast( events.signedTxFailure, {error: error} ); 
+                         self.reset() }
+                );
 
-                ).finally(function(){ self.endSession()});
+            // Case: Signing remote (via txMethod) but submission local - Write tx & wait for response.
+            // Broadcasts txHash of the signedTx or error.
+            } else if ( txMethod != undefined && typeof txMethod === 'function'){
 
-            // Case: Signing will be remote - Write endpoint to validate presence & wait for response.
+                txMethod(tx).then(function(signedCode){
+
+                    out.tx = signedCode;
+                    out.id = tx.sessionId;
+
+                        self.writeTx(out, UUID.signTx).then(
+
+                            function(txHash){ 
+                                $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} ); 
+                                self.endSession() }, 
+                            function(error) {
+                                $rootScope.$broadcast( events.signedTxFailure, {error: error} ); 
+                                self.reset() }
+                        );
+
+                }, function(error){
+                    $rootScope.$broadcast( events.signedTxMethodFailure, {error: error} ); 
+                    self.endSession();
+                });
+    
+
+            // Case: Signing & submission will be remote - Write endpoint to validate presence & wait for response.
             // Broadcasts txHash of the endpoint's authTx or error.
             } else if ( tx.authority === user.remoteAuthority){
 
@@ -338,10 +370,13 @@ angular.module('animist')
 
                 self.writeTx(out, UUID.authTx).then(
                     
-                    function(txHash){ $rootScope.$broadcast( events.authTxSuccess, {txHash: txHash} )}, 
-                    function(error){  $rootScope.$broadcast( events.authTxFailure, {error: error} )}
-
-                ).finally(function(){ self.endSession() });
+                    function(txHash){ 
+                        $rootScope.$broadcast( events.authTxSuccess, {txHash: txHash} ); 
+                        self.endSession() },
+                    function(error){  
+                        $rootScope.$broadcast( events.authTxFailure, {error: error} );
+                        self.reset() }
+                );
 
             // Case: No one here is authorized (Bad api key etc . . .)
             // Broadcasts unauthorized error
@@ -353,7 +388,7 @@ angular.module('animist')
         };
 
         
-        // ---------------------- Event Handlers -----------------------------
+        // ------------------------- receivedTX Event  -----------------------------------
 
         // $on('Animist:receivedTx'): Responds to a successful tx retrieval. Event is 
         // fired from subscribeHasTx. Checks proximity req and passes to submitTx for processing if  
@@ -364,7 +399,7 @@ angular.module('animist')
             if (self.peripheral.tx){
                 
                 proximityMatch(self.peripheral.tx) ? 
-                    self.submitTx(self.peripheral.tx) : 
+                    self.submitTx(self.peripheral.tx, customSignMethod ) : 
                     self.close();
 
             // A failsafe that doesn't get called in the current code (but someone might call it someday). 
@@ -375,7 +410,7 @@ angular.module('animist')
             }
         });
 
-        // -------------- BLE Central Connect/Disconnect  ----------------------
+        // -------------------- BLE Central Connect/Disconnect  ----------------------
 
         //  scanConnectAndDiscover(uuid): Wraps a set of sequential calls to
         //  $cordovaBluetoothLE ::scan() ::connect() ::discover(). This is boiler plate
@@ -392,43 +427,41 @@ angular.module('animist')
             // Start Scanning . . .
             $cordovaBluetoothLE.startScan( { services: [uuid] }).then(null,
             
-                // Scan failed
                 function(error){  d.reject({where: where, error: error}) },
-                // Scan succeeded
                 function(scan){         
 
                     // Stop Scan on Success per randDusing best practice. 
                     if (scan.status === 'scanResult'){
                         $cordovaBluetoothLE.stopScan().then(function(){ 
                             
-                            // Connect 
+                            
                             openParams = {address: scan.address, timeout: 5000};
                             closeParams = { address: scan.address };
 
-                            $cordovaBluetoothLE.connect(openParams).then(null,
+                            // Connect : close on failure per randDusing best practice
+                            $cordovaBluetoothLE.connect(openParams).then( null,
                                
-                               // Connect failed: close per randDusing best practice
                                 function(error){
                                     $cordovaBluetoothLE.close(closeParams);
                                     d.reject({where: where, error: error});
                                 },
 
-                                // Connected -> Discover
+                                // Connected -> Discover & resolve address
                                 function(connected){
                                     $cordovaBluetoothLE.discover(openParams).then(
-                                        // Discovered: Resolve address
-                                        function(device){  d.resolve(scan.address) },
-                                        // Discover failed
+                                        
+                                        function(device){  
+                                            d.resolve(scan.address) 
+                                        },
                                         function(error){
                                             $cordovaBluetoothLE.close(closeParams);
                                             d.reject({where: where, error: error});
                                         }
                                     );
-                                });
-                            // Stop scan failed
-                            }, function(error){ d.reject({where: where, error: error}) }
-                             
-                        );  
+                                }
+                            );
+                        // Stop scan failed
+                        }, function(error){ d.reject({where: where, error: error}) });  
                     }   
                 }
             );
@@ -440,21 +473,20 @@ angular.module('animist')
         // do not need to go through scan/connect/discover process to access
         // characteristics. Use cases are: when a proximity that was inadequate
         // meets the cached txs requirement & technical disconnections. 
+        // (Successful connection declares via notify callback )
         self.connect = function( address ){
 
             var where = 'AnimistBLE:connect: '
             var d = $q.defer();
 
-            // Connect 
+            // Connect : Close on failure per rand dusing best practice
             $cordovaBluetoothLE.connect({address: address, timeout: 5000}).then(null,
                
-                // Connect failed: close
                 function(error){
                     $cordovaBluetoothLE.close({address: address});
                     d.reject({where: where, error: error});
                 },
 
-                // Connected
                 function(connected){ d.resolve() }
             );
 
@@ -510,7 +542,8 @@ angular.module('animist')
         
         // writeTx(out, dest): 'out' is a json object to be transmitted. 'dest' is either the signedTx
         // or authTx characteristic uuid. Subscribes to characteristic, writes out and waits 
-        // for / resolves the Ethereum tx hash of completed transaction.
+        // for / resolves the Ethereum tx hash of completed transaction. (Succesful subscription 
+        // declares via notify callback)
         self.writeTx = function(out, dest){
         
             var where = 'AnimistBLE:writeTx: ';
@@ -526,11 +559,11 @@ angular.module('animist')
 
             out = encode(out);
 
-            $cordovaBluetoothLE.subscribe(req).then(null, 
+            // Subscribe
+            $cordovaBluetoothLE.subscribe(req).then(null,
 
-                // Subscribe failed     
                 function(error){ d.reject({where: where, error: error})},
-                // Subscribed/Updated
+                
                 function(sub){ 
                     
                     // Subscribed: write tx to target, wait for txHash notice
@@ -562,7 +595,6 @@ angular.module('animist')
             var where = 'AnimistBLE:subscribeHasTx: ';
             var d = $q.defer();
                 
-            // hasTx characteristic params
             var req = {
                 address: self.peripheral.address,
                 service: self.peripheral.service,
@@ -570,12 +602,10 @@ angular.module('animist')
                 timeout: 5000
             };
 
-            // Attempt
+            // Subscribe
             $cordovaBluetoothLE.subscribe(req).then(null, 
-                
-                // Subscribe failed     
+
                 function(error){ d.reject({where: where, error: error})},
-                // Subscribed/Updated
                 function(sub){ 
     
                     // Subscribed: write signedPin to characteristic 
@@ -606,7 +636,6 @@ angular.module('animist')
                         } else {
                             self.peripheral.tx = msg;
                             $rootScope.$broadcast( events.receivedTx );
-                            //logger(where, msg);
                         }
                     };
                 }
@@ -633,22 +662,17 @@ angular.module('animist')
             };
 
             // Decode response and update pin value
-            $cordovaBluetoothLE.read(req).then( 
-                // Update pin
-                function(result){ 
-                    self.pin = decode(result.value); 
-                    d.resolve()},
-                
-                // Subscribe failed     
-                function(error){ 
-                    d.reject({where: where, error: error})
-                }
-            );
+            $cordovaBluetoothLE.read(req).then(function(pin){ 
+            
+                self.pin = decode(pin.value); 
+                d.resolve()
+            
+            }, function(error){ d.reject({where: where, error: error})});
             
             return d.promise;
         };
 
-        // --------------------- Utilities --------------------------------
+        // ----------------------------------- Utilities --------------------------------
 
         // proximityMatch(): Is current proximity equal or nearer than required proximity?
         function proximityMatch(tx){

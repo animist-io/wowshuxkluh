@@ -1,6 +1,6 @@
-// Accounts api spec
-var debug;
+var debug_1, debug_2;
 
+// This is gnarly: Non angular promises, no angular mocks and a persistent database. . ..  .
 describe('AnimistAccounts Service', function(){
 
    var $scope, $q, $cordovaKeychain, $timeout, $window, pouchDB, AnimistAccount, names;
@@ -17,7 +17,7 @@ describe('AnimistAccounts Service', function(){
       names = AnimistAccount.getNames();
    });
 
-   describe('isInstalled', function(){
+   describe('isInstalled()', function(){
 
       it('should return true if keychain has key and DB has keystore', function(done){
 
@@ -35,7 +35,9 @@ describe('AnimistAccounts Service', function(){
             function(val){ expect(val).toBe(true) },
             function(val){ expect(true).toBe(false)}
          
-         ).finally(done);
+         ).finally(function(){
+            $q.when(db.destroy()).finally(done);
+         });
          $scope.$digest();
 
       });
@@ -56,7 +58,10 @@ describe('AnimistAccounts Service', function(){
             function(val){ expect(true).toBe(false) },
             function(val){ expect(val).toBe(false)}
          
-         ).finally(done);
+         ).finally(function(){
+            $q.when(db.destroy()).finally(done);
+         });
+
          $scope.$digest();
 
       })
@@ -67,7 +72,8 @@ describe('AnimistAccounts Service', function(){
       
          // Setup: Bad db, good key.
          db = new PouchDB(names.DB, {adapter: "websql"});
-         $cordovaKeychain.setForKey('bad_name', 'bad_service', expected);
+         $q.when(db.put({'_id': 'bad_name', 'val': 'someVal'}));
+         $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
          $scope.$digest();
 
          // Should error
@@ -76,9 +82,107 @@ describe('AnimistAccounts Service', function(){
             function(val){ expect(true).toBe(false) },
             function(val){ expect(val).toBe(false)}
          
-         ).finally(done);
+         ).finally(function(){
+            $q.when(db.destroy()).finally(done);
+         });
+
          $scope.$digest();
 
+      });
+   });
+
+   describe('install(password)', function(){
+
+      it('should save the users password in the keychain', function(done){
+
+         var kc, password = 'Xdkklwlwmmmm';
+
+         AnimistAccount.install(password).then(
+            function(){
+               kc = $cordovaKeychain.keychains;
+               expect(kc[names.KEY_SERVICE][names.KEY_USER]).toEqual(password);
+         
+         }, function(){
+               expect(true).toEqual('Should not reject')
+
+         }).finally(function(){
+            if (AnimistAccount.getDB())
+               $q.when(AnimistAccount.getDB().destroy()).finally(done);
+         });
+      });
+
+      it('should save the keystore and one address to the database', function(done){
+
+         var db, keystore, address, recovered_address, password = 'Xdkklwlwmmmm';
+
+         AnimistAccount.install(password).then(
+            function(){
+               db = AnimistAccount.getDB();
+               
+               $q.all([$q.when(db.get(names.DB_KEYSTORE)),
+                       $q.when(db.get(names.DB_ADDRESS))])
+
+               .then(function(results){
+
+                  keystore = lightwallet.keystore.deserialize(results[0].val);
+                  address = results[1].val;
+                  recovered_address = keystore.getAddresses()[0];
+                  expect(address).toEqual(recovered_address);
+               })
+               .finally(function(){
+                  $q.when(AnimistAccount.getDB().destroy()).finally(done);
+               });
+         }, function(){
+               expect(true).toEqual('Should not reject');
+         });         
+      });
+
+
+      it ('should reject with PASSWORD error if there is no password', function(done){
+
+         var codes = AnimistAccount.getCodes();
+
+         // No password
+         AnimistAccount.install().catch(function(e){
+         
+            expect(e.error).toEqual(codes.BAD_PASSWORD);
+         
+         }).finally(done);
+      });
+
+      it ('should reject with PASSWORD error if password is malformed', function(done){
+
+         var codes = AnimistAccount.getCodes();
+
+         // Boolean password
+         AnimistAccount.install(true).catch(function(e){
+         
+            expect(e.error).toEqual(codes.BAD_PASSWORD);
+         
+         }).finally(done);
+         
+      });
+
+      it('should reject w/ EXISTS error if already installed', function(done){
+
+         var promise, db, codes;
+
+         codes = AnimistAccount.getCodes();
+         
+         // Setup: Good db, good key.
+         db = new PouchDB(names.DB, {adapter: "websql"});
+         $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
+         $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, 'abcde');
+         //$scope.$digest();
+
+         // Should exist
+         AnimistAccount.install('password').catch(function(error){
+            
+            expect(error.error).toEqual(codes.EXISTS);
+         
+         }).finally(function(){
+            $q.when(db.destroy()).finally(done);
+         });
       });
    });
 

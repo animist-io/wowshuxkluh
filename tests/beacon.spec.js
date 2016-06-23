@@ -5,6 +5,7 @@ describe('AnimistBeacons Service', function () {
     
     beforeEach(module('animist'));      // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
+    beforeEach(module('ngCordovaMocks')); // ngCordova
 
     var $scope, $q, $cordovaBeacon, Beacons, AnimistBLE, AnimistAccount, d;
 

@@ -7,7 +7,7 @@
 angular.module('animist')
   .service("AnimistBeacons", AnimistBeacons);
 
-    function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBLE, AnimistAccount ){
+    function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBLE ){
 
         var self = this;
         var lock = false;
@@ -65,10 +65,10 @@ angular.module('animist')
             });
 
             // Initialize BLE
-            AnimistAccount.init().then(
+            /*AnimistAccount.init().then(
                 function(user){}, 
                 function(error){ logger(where, error)}
-            );
+            );*/
             
             // Check authorization before resolving. Remove newInstall key 
             // from local storage so that a pw/login will redirect to the settings

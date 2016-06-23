@@ -1,7 +1,86 @@
 // Accounts api spec
+var debug;
 
-describe('Accounts Service', function(){
+describe('AnimistAccounts Service', function(){
 
+   var $scope, $q, $cordovaKeychain, $timeout, $window, pouchDB, AnimistAccount, names;
+
+   beforeEach(function(){
+      var $injector = angular.injector(['ng', 'ngCordovaMocks', 'animist']);
+
+      $scope = $injector.get('$rootScope');
+      $q = $injector.get('$q');
+      $timeout = $injector.get('$timeout');
+      $cordovaKeychain = $injector.get('$cordovaKeychain');
+
+      AnimistAccount = $injector.get('AnimistAccount');
+      names = AnimistAccount.getNames();
+   });
+
+   describe('isInstalled', function(){
+
+      it('should return true if keychain has key and DB has keystore', function(done){
+
+         var promise, db, expected = 'abcd';
+      
+         // Setup: Good db, good key
+         db = new PouchDB(names.DB, {adapter: "websql"});
+         $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
+         $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
+         $scope.$digest();
+
+         // Should succeed
+         AnimistAccount.isInstalled().then(
+         
+            function(val){ expect(val).toBe(true) },
+            function(val){ expect(true).toBe(false)}
+         
+         ).finally(done);
+         $scope.$digest();
+
+      });
+
+      it('should return false if keychain is missing users key', function(done){
+
+         var promise, db, expected = 'abcd';
+      
+         // Setup: Good db, bad key.
+         db = new PouchDB(names.DB, {adapter: "websql"});
+         $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
+         $cordovaKeychain.setForKey('bad_name', 'bad_service', expected);
+         $scope.$digest();
+
+         // Should error
+         AnimistAccount.isInstalled().then(
+         
+            function(val){ expect(true).toBe(false) },
+            function(val){ expect(val).toBe(false)}
+         
+         ).finally(done);
+         $scope.$digest();
+
+      })
+
+      it('should return false if DB is missing keystore', function(done){
+
+         var promise, db, expected = 'abcd';
+      
+         // Setup: Bad db, good key.
+         db = new PouchDB(names.DB, {adapter: "websql"});
+         $cordovaKeychain.setForKey('bad_name', 'bad_service', expected);
+         $scope.$digest();
+
+         // Should error
+         AnimistAccount.isInstalled().then(
+         
+            function(val){ expect(true).toBe(false) },
+            function(val){ expect(val).toBe(false)}
+         
+         ).finally(done);
+         $scope.$digest();
+
+      });
+   });
 
    describe('createKeystore( string id, string password )', function(){
 

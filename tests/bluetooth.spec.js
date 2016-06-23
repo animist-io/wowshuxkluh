@@ -5,6 +5,7 @@ describe('AnimistBLE Service', function(){
 
    beforeEach(module('animist'));      // Animist
    beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
+   beforeEach(module('ngCordovaMocks'));
 
    var $scope, $q, $ble, Beacons, AnimistAccount, $timeout;
 

@@ -2,53 +2,143 @@
 //(function(){
 
 "use strict"
+
+var acc_debug;
 angular.module('animist')
   .service("AnimistAccount", AnimistAccount);
 
-    function AnimistAccount($rootScope, $q ){
+    function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 
         var self = this;
 
         // Lightwallet 
-        var signing = lightwallet.signing;
-        var txutils = lightwallet.txutils;
-        var keystore = lightwallet.keystore;
+        var wallet = {};
+        wallet.signing = lightwallet.signing;
+        wallet.txutils = lightwallet.txutils;
+        wallet.keystore = lightwallet.keystore;
+
+        // Keychain
+        var keychain = $cordovaKeychain; 
         
         // Locals
-        var ks;       // The keystore object serialized in the DB 
+        var keystore; // The keystore object serialized in the DB 
         var address;  // The current public user address
         var key;      // The password derived key stored in the device KeyChain
         var db;       // PouchDB object
         var contract; // The current contract ABI
 
+        // Errors
+        var codes = {
+            BAD_PASSWORD: 'Password unacceptable',
+            EXISTS: 'Database or key already exist',
+        }
+
+        // Names of external resources
+        var names = {
+            DB: 'animist',
+            DB_KEYSTORE: 'keystore',
+            DB_CURRENT_ADDRESS: 'current_address', 
+            KEY_SERVICE: '9tieods',
+            KEY_USER: 'o9021qw',
+            KEY_PW: 'wpan5lp',
+            KEY_API: 'zvuekx3' 
+        };
+
         self.initialized = false;
 
-        self.create = function(password){
+        self.install = function(password){
 
-            // Errors: 
-            // password_bad
-            // exists
+            var seed, ksDoc, addrDoc;
+            var where = 'AnimistAccounts:create';
+            var d = $q.defer();
 
             if ( password && typeof password === 'string' ){
-                if (!keyExists() && !keystoreExists()){
-                    // create DB
-                    // create key
-                    // create keystore
-                    // create address
-                    // save key 
-                    // save keystore or destroy key
-                    // save address to currentAddress or destroy keystore and key. 
-                    // bind all to runtime;
-                } else{
-                    d.reject()
-                } 
-            } else {
-                d.reject()
-            } 
+                
+                // Already installed? Reject. 
+                self.hasInstalled().then(function( isInstalled ){
+
+                    d.reject({where: where, error: codes.EXISTS })
+                
+                // Install
+                }, function( notInstalled ){
+
+                    // Generate keystore object
+                    seed = wallet.keystore.generateRandomSeed();
+                    wallet.keystore.deriveKeyFromPassword(password, function(error, derivedKey) {
+
+                        if (err){ 
+                            d.reject({ where: where, error: error });
+
+                        } else {
+                            keystore = new wallet.keystore( seed, derivedKey);
+                            keystore.generateNewAddress(derivedKey, 1);
+                            address = ks.getAddresses()[0];
+                            key = derivedKey;
+                            db = new PouchDB(names.DB, {adapter: "websql"});
+
+                            ksDoc = { '_id': names.DB_KEYSTORE, 'val': keystore.serialize() };
+                            addrDoc = {'_id': names.DB_ADDRESS, 'val': address };
+
+                            // Save keys to keychain, keystore and address to DB. Wipes all saved data
+                            // clear if there is an error in this sequence.
+                            $q.all( [ keychain.setForKey(names.KEY_USER, names.KEY_SERVICE, key),
+                                      keychain.setForKey(names.KEY_PW, names.KEY_SERVICE, password),
+                                      $q.when(db.put(ksDoc)),
+                                      $q.when(db.put(addrDoc)) ] )
+                            
+                            .then(function(success){ d.resolve()},
+                                  function( error ){ eraseAll(); d.reject({ where: where, error, error})})
+
+                            .finally( function(){
+                                $rootscope.$apply();
+                            });
+                        };
+                    });
+                });
+
+            } else d.reject({where: where, error: codes.PASSWORD});
+
+            return d.promise;
         };
         
-        self.keyExists = function(){};
-        self.keystoreExists = function(){};
+        function eraseAll(){
+            
+            if (db) 
+                db.destroy();
+    
+            if (keychain){
+                keychain.removeForKey(names.KEY_USER, names.KEY_SERVICE);
+                keychain.removeForKey(names.KEY_PW, names.KEY_SERVICE);
+                keystore = address = key = undefined;
+            }
+        };
+
+        // isInstalled(): If db and keystore are already loaded, resolves immediately. 
+        // Otherwise checks for keystore existence in pouchDB & user key existence 
+        // in keychain. Returns promise.
+        self.isInstalled = function(){
+            var d = $q.defer();
+            var dbTest, p1, p2;
+
+            var print = function(val){console.log('val: ' + val)};
+
+            if (!db && !key){
+                
+                dbTest = new PouchDB(names.DB, {adapter : 'websql'});
+
+                $q.all([ $q.when(dbTest.get(names.DB_KEYSTORE)), 
+                         keychain.getForKey(names.KEY_USER, names.KEY_SERVICE) ])
+
+                .then( function(val){ d.resolve(true) }, 
+                       function(){ d.reject(false) });
+
+            } else d.resolve();
+    
+            return d.promise;
+        };
+
+        self.getNames = function(){ return names };
+        self.getDB = function(){ return DB };
 
         self.load = function(){};
             // get key from keystore
@@ -63,7 +153,7 @@ angular.module('animist')
         self.setFunctionMap = function( map ){};
 
         self.sign = function( msg ){
-            return signing.signMsg( ks, key, msg, address); 
+            return wallet.signing.signMsg( ks, key, msg, address); 
         };
 
         self.generateTx = function(code, state){
@@ -80,11 +170,11 @@ angular.module('animist')
 
             fn = self.selectFunction(state);
 
-            contractData = txutils.createContractTx(address, txOptions);
+            contractData = wallet.txutils.createContractTx(address, txOptions);
             txOptions.to = contractData.addr;
 
-            fnTx = txutils.functionTx(contract, fn, [], txOptions);
-            return signing.signTx(ks, key, fnTx, address);
+            fnTx = wallet.txutils.functionTx(contract, fn, [], txOptions);
+            return wallet.signing.signTx(keystore, key, fnTx, address);
 
         };
 

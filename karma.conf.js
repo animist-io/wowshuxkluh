@@ -19,6 +19,9 @@ module.exports = function(config) {
 
          "bower_components/angular/angular.js",
          "bower_components/angular-mocks/angular-mocks.js",
+         "bower_components/pouchdb/dist/pouchdb.min.js",
+         "bower_components/angular-pouchdb/angular-pouchdb.js",
+         "bower_components/ngCordova/dist/ng-cordova-mocks.js",
          "node_modules/eth-lightwallet/dist/lightwallet.min.js",
       
          "src/animist.js",
@@ -27,9 +30,11 @@ module.exports = function(config) {
          "src/ble.js",
 
          "tests/animist.mocks.js",
+
          "tests/bluetooth.spec.js",
          "tests/beacon.spec.js",
          "tests/accounts.spec.js"
+         
       ],
 
       // list of files to exclude

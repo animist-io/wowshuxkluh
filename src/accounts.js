@@ -10,6 +10,7 @@ angular.module('animist')
     function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 
         var self = this;
+        var here = 'AnimistAccount: ';
 
         // Lightwallet 
         var wallet = {};
@@ -29,10 +30,14 @@ angular.module('animist')
 
         // Errors
         var codes = {
-            BAD_PASSWORD: 'install(): Bad password',
-            EXISTS: 'install(): DB or key already exist',
-            NOT_INSTALLED: 'load(): Key/Keystore not installed',
-            DERIVE_KEY: 'load(): Derive key from password failed'
+            BAD_PASSWORD: here + "Cannot install. Bad password.",
+            EXISTS: here + "Cannot install. DB or key already exist.",
+            NOT_INSTALLED: here + "Can't load: Key/Keystore not installed.",
+            DERIVE_KEY: here + "Can't load: Couldn't derive key from password.",
+            BAD_KEY: here + "Can't load: User password doesn't unlock keystore",
+            BAD_ADDRESS: here + "Can't select: Address couldn't be found",
+            ADDRESS_DNE: here + "Can't select: Address malformed",
+            NOT_INITIALIZED: here + "Method requires that service be initialized" 
         }
 
         // Names of external resources
@@ -49,13 +54,20 @@ angular.module('animist')
         self.initialized = false;
         self.installed = false; 
 
+        //-------------------------------------------------------------------------------------------------
+        // ------------------------------  Installation & Loading -----------------------------------------
+        //-------------------------------------------------------------------------------------------------
+
         // isInstalled(): Resolves immediately if db and keystore are already loaded. 
         // Checks for keystore in pouchDB & user key in keychain. Returns promise.
+        // FWIW: If password has been deleted from the keychain but keystore 
+        // exists in the DB, subsequent installation will fail AND wipe the DB from the device. 
+        // Subsequent installs should succeed.
         self.isInstalled = function(){
             var d = $q.defer();
             var dbTest, p1, p2;
 
-            if (!db && !key){
+            if (!db){
                 
                 dbTest = new PouchDB(names.DB, {adapter : 'websql'});
 
@@ -70,7 +82,9 @@ angular.module('animist')
             return d.promise;
         };
 
-        // install(): Should only run when app is first downloaded.
+        // install( password ): Generates keystore and a single address. Saves these
+        // to DB and sets address as current account. Sets service state to 'installed'
+        // and 'initialized'. On fail it wipes  
         self.install = function(password){
 
             var seed, ksDoc, addrDoc;
@@ -110,6 +124,7 @@ angular.module('animist')
                             
                             .then(  function(success){ 
                                         self.installed = true; 
+                                        self.initialized = true;
                                         d.resolve()},
 
                                     function( error ){ 
@@ -159,6 +174,7 @@ angular.module('animist')
                                 
                             } else {
                                 key = derivedKey;
+                                self.initialized = true;
                                 d.resolve();
                             };
                         });
@@ -177,8 +193,58 @@ angular.module('animist')
             return d.promise;
         };
            
-        self.getCurrentAddress = function(){ return address };
 
+        //-------------------------------------------------------------------------------------------------
+        // ------------------------------  Account Mgmt ---------------------------------------------------
+        //-------------------------------------------------------------------------------------------------   
+        
+        // getCurrentAccount(): returns string address of currently selected account
+        self.getCurrentAccount = function(){ 
+            return (self.initialized) ? address : undefined;
+        };
+
+        // listAccounts(): Returns array of string addresses of available keystore accounts
+        self.listAccounts = function(){
+            return (self.initialized) ? keystore.getAddresses() : undefined;
+        }
+
+        // generateAccount(): Generates new account in keystore. Returns string address.
+        self.generateAccount = function(){
+            keystore.generateNewAddress(key);
+        };
+
+        // selectAccount(): Sets newAddress (string) to currentAddress if newAddress 
+        // exists in the the keystore. Saves to DB. Returns promise;
+        self.selectAccount = function( newAddress ){
+            var list, selected, update;
+            var d = $q.defer();
+
+            if (self.initialized && typeof newAddress === 'string'){
+        
+                if (isIn( newAddress, keystore.getAddresses())){
+                
+                    update = { _id: names.DB_ADDRESS, val: newAddress }; 
+                    $q.when( db.get(names.DB_ADDRESS).then(function(doc) {
+                        
+                        update._rev = doc._rev;
+                        db.put(update)
+
+                            .then(function(){ 
+                                address = newAddress; 
+                                d.resolve() })
+
+                            .catch(function(err){ 
+                                d.reject(err) }) 
+                        
+                        }).catch(function(err){ d.reject(err) })
+                    )
+                } else d.reject(codes.ADDRESS_DNE)
+            } else d.reject(codes.BAD_ADDRESS)
+
+            return d.promise;  
+        };
+
+        // 
         self.saveContract = function(key, val){ };
         self.getContract = function(key){};
         self.allContracts = function(){};
@@ -186,11 +252,14 @@ angular.module('animist')
         self.selectFunction = function( state ){};
         self.setFunctionMap = function( map ){};
 
+        
         // ----------------------- Utilities -------------------------------
+        
+
         // reset(): Resetting destroys the local database and deletes the user
         // password from the keychain. Unless DB is replicated AND user can 
-        // remember their password, all local accounts are toast. This is 
-        // called by install() to unwind installation if it fails mid stream.
+        // remember their password, all local accounts are toast. 
+        // Called by install() to unwind installation if it fails mid stream.
         function reset(){
             
             self.installed = false;
@@ -204,16 +273,22 @@ angular.module('animist')
             else     return $q.when(true);
         };
 
-        
+        // isIn(): Query in target?
+        function isIn(query, target){
+            for (var i = 0; i < target.length; i++){
+                if (query === target[i])
+                    return true;
+            }
+            return false;
+        };
 
+    
         // Unit testing helpers . . .
         self.getNames = function(){ return names };
         self.getCodes = function(){ return codes };
         self.getDB = function(){ return db };
         self.getKeychain = function(){ return keychain};
         self.clearPrivate = function(){ keystore = address = key = undefined};
-        self.exposePrivate = function(){ return {}}
-        
         
         self.sign = function( msg ){
             return wallet.signing.signMsg( keystore, key, msg, address); 

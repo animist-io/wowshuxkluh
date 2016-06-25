@@ -23,9 +23,10 @@ Key issues here include:
 Cordova dependencies
 
 ```
-$ cordova plugin add cordova-plugin-bluetoothle                   // BluetoothLE
-$ cordova plugin add com.unarin.cordova.beacon                    // iBeacon
-cordova plugin add https://github.com/shazron/KeychainPlugin.git  // iOS Keychain
+$ cordova plugin add cordova-plugin-bluetoothle                        // BluetoothLE
+$ cordova plugin add cordova-plugin-background-mode-bluetooth-central  // iOS background mode perm.
+$ cordova plugin add com.unarin.cordova.beacon                         // iBeacon
+cordova plugin add https://github.com/shazron/KeychainPlugin.git       // iOS Keychain
 ```
 
 

@@ -35,8 +35,8 @@ angular.module('animist')
             NOT_INSTALLED: here + "Can't load: Key/Keystore not installed.",
             DERIVE_KEY: here + "Can't load: Couldn't derive key from password.",
             BAD_KEY: here + "Can't load: User password doesn't unlock keystore",
-            BAD_ADDRESS: here + "Can't select: Address couldn't be found",
-            ADDRESS_DNE: here + "Can't select: Address malformed",
+            BAD_ADDRESS: here + "Can't select: Address malformed",
+            ADDRESS_DNE: here + "Can't select: Address couldn't be found",
             NOT_INITIALIZED: here + "Method requires that service be initialized" 
         }
 
@@ -91,10 +91,9 @@ angular.module('animist')
             var where = 'AnimistAccounts:create';
             var d = $q.defer();
 
-            // Validate password
+            // Validate password and verify not installed
             if ( password && typeof password === 'string' ){
                 
-                // Verify not installed
                 if (!self.installed ){
                 
                     // Keystore setup
@@ -116,7 +115,7 @@ angular.module('animist')
                             ksDoc = { '_id': names.DB_KEYSTORE, 'val': keystore.serialize() };
                             addrDoc = {'_id': names.DB_ADDRESS, 'val': address };
                             
-                            // Save keys to keychain. Save keystore and current address to DB. 
+                            // Save password to keychain. Save keystore and current address to DB. 
                             // (Wipe all saved data if there is an error in this sequence.)
                             $q.all( [ keychain.setForKey(names.KEY_USER, names.KEY_SERVICE, password),
                                       $q.when(db.put(ksDoc)),
@@ -133,7 +132,7 @@ angular.module('animist')
                                         }) 
                                     })
 
-                            // Notify angular we finished. 
+                            // Tell angular we finished. 
                             .finally(function(){ 
                                 $rootscope.$apply() 
                             });

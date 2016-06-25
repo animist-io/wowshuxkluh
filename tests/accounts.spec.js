@@ -1,10 +1,12 @@
 var debug_1, debug_2;
 
-// Gnarly: PouchDB promises are plain JS. To catch test failure, add expectations to the promise
-// callbacks you don't intend to hit. Cannot use angular mocks. Database should be explicitly 
+// WATCH OUT. THIS THING IS GNARLY. AND SLOW.
+// Cannot use angular mocks. PouchDB promises are plain JS. To catch test failure, 
+// add expectations to the promise callbacks you don't intend to hit. DB should be explicitly 
 // destroyed post test because it will persist if chrome is live-reloading. Failing tests do not
 // clean up after themselves and will result in a cascade of failures across reloads . . . so 
-// start from the top fixing errors and restart chrome until the 'shouldnt' errors disappear. 
+// start from the top fixing errors and restart chrome each time until there are no 
+// 'shouldnt reject'/'shouldnt succeed' errors. 
 
 describe('AnimistAccount Service', function(){
 

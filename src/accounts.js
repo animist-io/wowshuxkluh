@@ -37,7 +37,7 @@ angular.module('animist')
             BAD_KEY: here + "Can't load: User password doesn't unlock keystore",
             BAD_ADDRESS: here + "Can't select: Address malformed",
             ADDRESS_DNE: here + "Can't select: Address couldn't be found",
-            NOT_INITIALIZED: here + "Method requires that service be initialized" 
+            NOT_INITIALIZED: here + "Method requires service be initialized" 
         }
 
         // Names of external resources
@@ -50,19 +50,30 @@ angular.module('animist')
             KEY_API: 'zvuekx3' 
         };
 
-        // Initial state
+        /**
+         * Boolean set to true when service has loaded/installed keystore & is able to sign txs
+         * @var initialized
+         */
         self.initialized = false;
+
+         /**
+         * Boolean set to true when app has a working DB and a password saved to device keychain
+         * @var installed
+         */
         self.installed = false; 
 
         //-------------------------------------------------------------------------------------------------
         // ------------------------------  Installation & Loading -----------------------------------------
         //-------------------------------------------------------------------------------------------------
 
-        // isInstalled(): Resolves immediately if db and keystore are already loaded. 
-        // Checks for keystore in pouchDB & user key in keychain. Returns promise.
-        // FWIW: If password has been deleted from the keychain but keystore 
-        // exists in the DB, subsequent installation will fail AND wipe the DB from the device. 
-        // Subsequent installs should succeed.
+        /**
+         * Checks for presence of keystore in pouchDB & user key in keychain. 
+         * FWIW: If password has been deleted from the keychain but keystore 
+         * exists in the DB, subsequent installation will fail AND wipe the DB from the device. 
+         * Subsequent installs should succeed.
+         * @method isInstalled
+         * @return {promise} Resolves if assets are installed or already loaded, rejects otherwise.
+         */
         self.isInstalled = function(){
             var d = $q.defer();
             var dbTest, p1, p2;
@@ -74,17 +85,22 @@ angular.module('animist')
                 $q.all([ $q.when(dbTest.get(names.DB_KEYSTORE)), 
                          keychain.getForKey(names.KEY_USER, names.KEY_SERVICE) ])
 
-                .then( function(){ self.installed = true;  d.resolve(true) }, 
-                       function(){ self.installed = false; d.reject(false) });
+                .then( function(){ self.installed = true;  d.resolve() }, 
+                       function(){ self.installed = false; d.reject() });
 
             } else d.resolve();
     
             return d.promise;
         };
 
-        // install( password ): Generates keystore and a single address. Saves these
-        // to DB and sets address as current account. Sets service state to 'installed'
-        // and 'initialized'. On fail it wipes  
+        /**
+         * Generates keystore and a single address. Saves these to DB and sets address as current account. 
+         * Sets service state to 'installed' and 'initialized'. On fail it wipes whatever assets it 
+         * created attempting to install.
+         * @method install
+         * @param {String} password: the pw to encrypt the keystore with
+         * @return {promise} Resolves when installation is complete, rejects on error w/error
+         */
         self.install = function(password){
 
             var seed, ksDoc, addrDoc;
@@ -116,21 +132,20 @@ angular.module('animist')
                             addrDoc = {'_id': names.DB_ADDRESS, 'val': address };
                             
                             // Save password to keychain. Save keystore and current address to DB. 
-                            // (Wipe all saved data if there is an error in this sequence.)
                             $q.all( [ keychain.setForKey(names.KEY_USER, names.KEY_SERVICE, password),
                                       $q.when(db.put(ksDoc)),
                                       $q.when(db.put(addrDoc))])
                             
-                            .then(  function(success){ 
-                                        self.installed = true; 
-                                        self.initialized = true;
-                                        d.resolve()},
+                            .then( function(success){ 
+                                self.installed = true; 
+                                self.initialized = true;
+                                d.resolve()
+                            })
 
-                                    function( error ){ 
-                                        reset().then(function(){ 
-                                            d.reject(error)
-                                        }) 
-                                    })
+                            // Wipe all saved data if there was an error in sequence above.
+                            .catch(function( error ){ 
+                                reset().then(function(){ d.reject(error)}) 
+                            })
 
                             // Tell angular we finished. 
                             .finally(function(){ 
@@ -144,6 +159,12 @@ angular.module('animist')
             return d.promise;
         };
         
+        /**
+         * Loads keystore and current account from DB, gets password from keychain and 
+         * uses it to derive key from keystore.
+         * @method load
+         * @return {promise} Resolves on success, rejects w/error on error
+         */
         self.load = function(){
             var password;
             var d = $q.defer();
@@ -156,8 +177,7 @@ angular.module('animist')
                          $q.when(db.get(names.DB_ADDRESS)),
                          keychain.getForKey(names.KEY_USER, names.KEY_SERVICE) ])
 
-                .then(
-                    function(data){
+                .then(function(data){
 
                         keystore = wallet.keystore.deserialize(data[0].val);
                         address = data[1].val
@@ -177,10 +197,11 @@ angular.module('animist')
                                 d.resolve();
                             };
                         });
-                    },
-                    // Load failed
-                    function(e){ d.reject(e)} )
+                    })
 
+                // Load failed
+                .catch(function(e){ d.reject(e)} )
+                    
                 // Notify angular we finished. 
                 .finally(function(){ 
                     $rootscope.$apply() 
@@ -197,23 +218,41 @@ angular.module('animist')
         // ------------------------------  Account Mgmt ---------------------------------------------------
         //-------------------------------------------------------------------------------------------------   
         
-        // getCurrentAccount(): returns string address of currently selected account
+        /**
+         * Gets address of currently selected account
+         * @method getCurrentAccount
+         * @return {String} ethereum account address 
+         */
         self.getCurrentAccount = function(){ 
             return (self.initialized) ? address : undefined;
         };
 
-        // listAccounts(): Returns array of string addresses of available keystore accounts
+        /**
+         * Gets all accounts in keystore 
+         * @method listAccounts
+         * @return {array} account address strings 
+         */
         self.listAccounts = function(){
             return (self.initialized) ? keystore.getAddresses() : undefined;
         }
 
-        // generateAccount(): Generates new account in keystore. Returns string address.
+         /**
+         * Generates new account in keystore.
+         * @method generateAccount
+         * @return {undefined} 
+         */
         self.generateAccount = function(){
             keystore.generateNewAddress(key);
         };
 
-        // selectAccount(): Sets newAddress (string) to currentAddress if newAddress 
-        // exists in the the keystore. Saves to DB. Returns promise;
+        /**
+         * Sets newAddress to currentAddress if newAddress 
+         * exists in the the keystore. Saves this change to DB. 
+         * Generates new account in keystore.
+         * @method selectAccount
+         * @param {string} the account to select
+         * @return {promise} Resolves after db save, rejects w/error on fail 
+         */
         self.selectAccount = function( newAddress ){
             var list, selected, update;
             var d = $q.defer();
@@ -257,7 +296,7 @@ angular.module('animist')
 
         // reset(): Resetting destroys the local database and deletes the user
         // password from the keychain. Unless DB is replicated AND user can 
-        // remember their password, all local accounts are toast. 
+        // remember their password, local accounts are toast. 
         // Called by install() to unwind installation if it fails mid stream.
         function reset(){
             
@@ -288,6 +327,8 @@ angular.module('animist')
         self.getDB = function(){ return db };
         self.getKeychain = function(){ return keychain};
         self.clearPrivate = function(){ keystore = address = key = undefined};
+        self.printKeystore = function(){ console.log(keystore.serialize())};
+        self.printKey = function(){console.log(key)};
         
         self.sign = function( msg ){
             return wallet.signing.signMsg( keystore, key, msg, address); 

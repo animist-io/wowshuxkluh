@@ -110,10 +110,11 @@ describe('AnimistAccount Service', function(){
 
       it('should save the users password in the keychain', function(done){
 
-         var kc, password = 'Xdkklwlwmmmm';
+         var kc, password = 'password';
 
          AnimistAccount.install(password).then(
             function(){
+               
                kc = $cordovaKeychain.keychains;
                expect(kc[names.KEY_SERVICE][names.KEY_USER]).toEqual(password);
          
@@ -165,7 +166,7 @@ describe('AnimistAccount Service', function(){
                expect(AnimistAccount.initialized).toBe(true);
          
          }, function(e){
-               console.log(e);
+               //console.log(e);
                expect(true).toEqual('Should not reject')
 
          }).finally(function(){

@@ -31,9 +31,11 @@ angular.module('animist')
         
         self.initialized = false;
        
-        // @function initialize() 
-        // Sets up beaconing in app. This method resolves on the Nearby tab, so it may
-        // have already run as user navigates around. Rejects if user does not authorize.
+        /**
+         * Registers app to listen for Animist beacons in background mode on iOS. 
+         * @method initialize() 
+         * @return {promise} Resolves on success, rejects if user does not authorize.
+         */
         self.initialize = function(){
             
             var d = $q.defer();
@@ -63,12 +65,6 @@ angular.module('animist')
             $rootScope.$on("$cordovaBeacon:didRangeBeaconsInRegion", function(event, result){
                 onCapture(result);
             });
-
-            // Initialize BLE
-            /*AnimistAccount.init().then(
-                function(user){}, 
-                function(error){ logger(where, error)}
-            );*/
             
             // Check authorization before resolving. Remove newInstall key 
             // from local storage so that a pw/login will redirect to the settings
@@ -89,12 +85,13 @@ angular.module('animist')
             }
         };
 
+        /** 
+         * Called when monitoring exits a region. 'Resets' AnimistBLE, making it possible to 
+         * open a new server connection with an endpoint. 
+         * @method onExit
+         * @param { Object } A beacon object which specifies the region uuid but not major/minor.
+        */
 
-        // @function: onExit
-        // @param: result (this only contains uuid, not major/minor)
-        // Called when monitoring exits a region. Pulls app identifier from local storage and
-        // attempts to remove any connections where this app is the receiver and the transmitter
-        // has the uuid specified by 'result'.   
         function onExit(result){
 
             var beacon = result.region;
@@ -110,10 +107,12 @@ angular.module('animist')
            
         };
 
-        // @function: onCapture
-        // @param: result (result.beacons is an array)
-        // Called when ranging detects a beacon. Pulls app identifier from local storage and
-        // attempts to create a connection record in the meteor DB.  
+        /** 
+         * Called when ranging detects a beacon. Passes beacon uuid and proximity to AnimistBLE
+         * (When in range of beacon, this callback gets hit ~500ms - i.e. frequently) 
+         * @method onCapture
+         * @param { Array } Array of beacon objects which specify the region uuid & their major/minor.
+        */
         function onCapture(result){
 
             var beacons = result.beacons

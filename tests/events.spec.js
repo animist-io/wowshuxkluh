@@ -1,3 +1,0 @@
-describe('Events', function(){
-
-});

@@ -104,13 +104,82 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     // Set via AnimistBLE.setCustomSignMethod()
     var customSignMethod = undefined;
 
+
+    // ------------------------------ Utilities --------------------------------------
+
+    // proximityMatch(): Is current proximity nearer or equal to required proximity?
+    function proximityMatch(tx){
+        return ( tx && (proximityWeights[self.proximity] >= proximityWeights[tx.proximity]) );
+    }
+
+    // wasConnected(): Have we already generated a peripheral object during a recent connection?
+    function wasConnected(){
+        return (Object.keys(self.peripheral).length != 0);
+    }
+
+    // hasTimedOut(): Is now later than session timeout specified by endpoint when it returned tx?
+    function hasTimedOut(){
+        return (Date.now() > self.peripheral.tx.expires);
+    }
+
+    // canOpenLink(): Are we transacting or completed? Is beacon Animist? Is proximity real?
+    // All preconditions to opening a link. 
+    function canOpenLink( beaconId, proximity ){
+        if (self.state === self.stateMap.TRANSACTING) return self.state; 
+        if (self.state === self.stateMap.COMPLETED)   return self.state;
+        if (!verifyIsAnimist(beaconId))               return self.stateMap.NOT_ANIMIST;
+        if (!verifyProximity(proximity))              return self.stateMap.PROXIMITY_UNKNOWN;
+
+        return self.state;
+    }
+
+    // isAnimistSignal: Is this beacon signal in our endpoint map? This is a check for bugs 
+    // originating in AnimistBeacon where signal might be captured that this service doesn't 
+    // know about . . .
+    function verifyIsAnimist(uuid){
+        return endpointMap.hasOwnProperty(uuid);
+    };
+
+    // verifyProximity(): Is the proximity string one of three valid iOS proximity strings?
+    function verifyProximity(val){
+
+        return ( val === 'proximityImmediate' || 
+                 val === 'proximityNear' ||
+                 val === 'proximityFar' );
+
+    };
+
+    // encode(): Prep string for transmission over BLE.
+    function encode(msg){
+        msg = JSON.stringify(msg);
+        msg = $cordovaBluetoothLE.stringToBytes(msg);
+        return $cordovaBluetoothLE.bytesToEncodedString(msg);
+    };
+
+    // decode(): Turn BLE transmission into string.
+    function decode(msg){
+        msg = $cordovaBluetoothLE.encodedStringToBytes(msg);
+        return $cordovaBluetoothLE.bytesToString(msg);
+    };
+
+    // parseCode(): Reverse map hex error codes received from endpoint on write response
+    // to human-readable strings (See var codes at top).
+    function parseCode(hex){
+        for( var prop in codes) {
+            if( codes.hasOwnProperty( prop ) ) {
+                if( codes[ prop ] === hex )
+                    return prop;
+            }
+        }
+    }
+
     // -------------------------------------------------------------------------
-    // ------------------------------- API -------------------------------------
+    // ------------------------------- Public ----------------------------------
     // -------------------------------------------------------------------------
 
     var self = this;
 
-    self.peripheral = {};  // Obj representing the animist endpoint client we connect to.
+    self.peripheral = {};  // Obj representing the animist endpoint we connect to.
     self.proximity;        // Current proximity passed to us by AnimistBeacon via listen()
  
     // State values that can be tested against in the listen()
@@ -397,10 +466,10 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
                 self.submitTx(self.peripheral.tx, customSignMethod ) : 
                 self.close();
 
-        // A failsafe that doesn't get called in the current code (but someone might call it someday). 
+        // A failsafe that doesn't get called in the current code (someone might call it someday). 
         // The 'no tx' case is handled by rejection from subscribeHasTx . . . session gets killed 
         // in the openLink error callback. 
-        } else {
+        } else { 
             self.endSession(); 
         }
     });
@@ -668,73 +737,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         return d.promise;
     };
 
-    // ----------------------------------- Utilities --------------------------------
 
-    // proximityMatch(): Is current proximity equal or nearer than required proximity?
-    function proximityMatch(tx){
-        return ( tx && (proximityWeights[self.proximity] >= proximityWeights[tx.proximity]) );
-    }
-
-    // wasConnected(): Have we already generated a peripheral object during a recent connection?
-    function wasConnected(){
-        return (Object.keys(self.peripheral).length != 0);
-    }
-
-    // hasTimedOut(): Is now later than session timeout specified by endpoint when it returned tx?
-    function hasTimedOut(){
-        return (Date.now() > self.peripheral.tx.expires);
-    }
-
-    // canOpenLink(): Are we transacting or completed? Is beacon Animist? Is proximity real?
-    // All preconditions to opening a link. 
-    function canOpenLink( beaconId, proximity ){
-        if (self.state === self.stateMap.TRANSACTING) return self.state; 
-        if (self.state === self.stateMap.COMPLETED)   return self.state;
-        if (!verifyIsAnimist(beaconId))               return self.stateMap.NOT_ANIMIST;
-        if (!verifyProximity(proximity))              return self.stateMap.PROXIMITY_UNKNOWN;
-
-        return self.state;
-    }
-
-    // isAnimistSignal: Is this beacon signal in our endpoint map? This is a failsafe for bugs 
-    // originating in AnimistBeacon where signal might be captured (due to developer modification)
-    // that this service doesn't know about . . .
-    function verifyIsAnimist(uuid){
-        return endpointMap.hasOwnProperty(uuid);
-    };
-
-    // verifyProximity(): Is the proximity string one of three valid iOS proximity strings?
-    function verifyProximity(val){
-
-        return ( val === 'proximityImmediate' || 
-                 val === 'proximityNear' ||
-                 val === 'proximityFar' );
-
-    };
-
-    // encode(): Prep string for transmission over BLE.
-    function encode(msg){
-        msg = JSON.stringify(msg);
-        msg = $cordovaBluetoothLE.stringToBytes(msg);
-        return $cordovaBluetoothLE.bytesToEncodedString(msg);
-    };
-
-    // decode(): Turn BLE transmission into string.
-    function decode(msg){
-        msg = $cordovaBluetoothLE.encodedStringToBytes(msg);
-        return $cordovaBluetoothLE.bytesToString(msg);
-    };
-
-    // parseCode(): Reverse map hex error codes received from endpoint on write response
-    // to human-readable strings (See var codes at top).
-    function parseCode(hex){
-        for( var prop in codes) {
-            if( codes.hasOwnProperty( prop ) ) {
-                if( codes[ prop ] === hex )
-                    return prop;
-            }
-        }
-    }
 
     // Remote Meteor Debugging
     function logger(msg, obj){

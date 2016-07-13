@@ -70,7 +70,7 @@ angular.module('animist')
          * Checks for presence of keystore in pouchDB & user key in keychain. 
          * FWIW: If password has been deleted from the keychain but keystore 
          * exists in the DB, subsequent installation will fail AND wipe the DB from the device. 
-         * Subsequent installs should succeed.
+         * THEN, subsequent installs should succeed.
          * @method isInstalled
          * @return {promise} Resolves if assets are installed or already loaded, rejects otherwise.
          */
@@ -248,7 +248,6 @@ angular.module('animist')
         /**
          * Sets newAddress to currentAddress if newAddress 
          * exists in the the keystore. Saves this change to DB. 
-         * Generates new account in keystore.
          * @method selectAccount
          * @param {string} the account to select
          * @return {promise} Resolves after db save, rejects w/error on fail 

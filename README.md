@@ -1,18 +1,18 @@
 # wowshuxkluh
 
-[![Build Status](https://travis-ci.org/animist-io/wowshuxkluh.svg?branch=master)](https://travis-ci.org/animist-io/wowshuxkluh)
+[![Build Status](https://travis-ci.org/animist-io/wowshuxkluh.svg?branch=master)](https://travis-ci.org/animist-io/wowshuxkluh) **Warning: under construction / not currently usable.** 
 
-(This repo is in under construction and not currently usable. Contains earliest drafts/tests for a BLE client, beacon detector and Ethereum account manager. Project focus is shifting to [animist-io/whale-island](https://github.com/animist-io/whale-island) to flesh out the server itself. We'll cycle back here to finish up when that's complete. 
-(Updated late June, 2016))
-
-Wowshuxkluh will be an an Angular 1.x library for Ionic.js that lets mobile devices automatically (or intentionally) connect to Ethereum IoT nodes over BluetoothLE and write transactions to the blockchain about their location. The initial goal is to make presence in space and time transactionally available to Ethereum contracts in a way that is relatively tedious to spoof. Later work will focus on making any IoT/mobile functionality (barcode scans, NFC, sensor data ) available. 
+Wowshuxkluh will be an an Angular 1.x library for Ionic.js that lets mobile devices automatically (or intentionally) connect to Ethereum IoT nodes over BluetoothLE and write transactions to the blockchain about their location. The project's goal is to make presence in space and time transactionally available to Ethereum contracts in a way that is tedious to spoof - e.g. it should provide a reasonably reliable IoT driven location oracle for mobile. 
 
 Use cases for such a system include:
-+ Competitive races from one location to another, 
++ Competitive races 
 + Any game where presence of the players together in a location is a key component (ex: Assassins) 
-+ Rewards systems for visiting locations or moving through space along specified routes 
++ Location dependent incentive/reward programs
 
-Key issues here include:
+Repo currently contains early drafts & tests of a BLE client, beacon detector and Ethereum account manager. Project focus is shifting to [animist-io/whale-island](https://github.com/animist-io/whale-island) to flesh out the server itself. We'll cycle back here to finish up when that's complete. 
+(Updated late June, 2016))
+
+Key design issues here include:
 
 + Ethereum account management on devices 
 + Secure local connection/auth between IOT Node and mobile device

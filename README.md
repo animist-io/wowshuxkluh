@@ -9,7 +9,7 @@ Use cases for such a system include:
 + Any game where presence of the players together in the same space is a key component (ex: Assassins) 
 + Location dependent incentive/reward programs
 
-Repo currently contains early drafts & tests of a BLE client, beacon detector and Ethereum account manager. Project focus is shifting to [animist-io/whale-island](https://github.com/animist-io/whale-island) to flesh out the server itself. We'll cycle back here to finish up when that's complete. 
+Repo currently contains early drafts & tests of a BLE client, beacon detector and Ethereum account manager. Project focus is shifting to [animist-io/whale-island](https://github.com/animist-io/whale-island) to flesh out the server itself. Cycling back here to finish up when that's complete. 
 (Updated late June, 2016))
 
 Key design issues here include:

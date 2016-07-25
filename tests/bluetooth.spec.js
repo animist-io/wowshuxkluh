@@ -223,11 +223,11 @@ describe('AnimistBLE Service', function(){
 
       it('should broadcast "Animist:noTxFound" if endpoint does not find a tx and end the session', function(){
 
-         var expected_error = { where : 'AnimistBLE:subscribeHasTx: ', error : 'NO_TX_FOUND' };
+         var expected_error = { where : 'AnimistBLE:subscribeGetContract: ', error : 'NO_TX_FOUND' };
 
          // Trigger error
          $ble.throwsNOTX = true;
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          spyOn($scope, '$broadcast');
          spyOn(AnimistBLE, 'endSession');
@@ -260,7 +260,7 @@ describe('AnimistBLE Service', function(){
 
          spyOn(AnimistBLE, 'scanConnectAndDiscover').and.callThrough();
          spyOn(AnimistBLE, 'readPin').and.callThrough();
-         spyOn(AnimistBLE, 'subscribeHasTx').and.callThrough();
+         spyOn(AnimistBLE, 'subscribeGetContract').and.callThrough();
          spyOn($scope, '$broadcast');
 
       });
@@ -272,19 +272,19 @@ describe('AnimistBLE Service', function(){
       it('should initiate endpoint connection & retrieve a tx if no tx is cached', function(){
          
          AnimistBLE.peripheral = {};
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          promise = AnimistBLE.openLink(beacon_id, 'proximityNear');
          $timeout.flush();
 
          expect(AnimistBLE.scanConnectAndDiscover).toHaveBeenCalledWith(service_uuid);
          expect(AnimistBLE.readPin).toHaveBeenCalled();
-         expect(AnimistBLE.subscribeHasTx).toHaveBeenCalled();
+         expect(AnimistBLE.subscribeGetContract).toHaveBeenCalled();
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:initiatedBLEConnection');
 
          expect(AnimistBLE.peripheral.address).toEqual(ble_address);
          expect(AnimistBLE.peripheral.service).toEqual(service_uuid);
-         expect(AnimistBLE.peripheral.tx).toEqual($ble.mockHasTxResult);
+         expect(AnimistBLE.peripheral.tx).toEqual($ble.mockGetContractResult);
          expect(AnimistBLE.pin).toEqual(pin);
 
       });
@@ -293,7 +293,7 @@ describe('AnimistBLE Service', function(){
       it('should readPin from characteristic: "C40C94B3-D9FF-45A0-9A37-032D72E423A9"', function(){
 
          AnimistBLE.peripheral = {};
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          expected_request = {
             address: ble_address,
@@ -311,10 +311,10 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should subscribeHasTx to characteristic: "BFA15C55-ED8F-47B4-BD6A-31280E98C7BA"', function(){
+      it('should subscribeGetContract to characteristic: "BFA15C55-ED8F-47B4-BD6A-31280E98C7BA"', function(){
 
          AnimistBLE.peripheral = {};
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          expected_request = {
             address: ble_address,
@@ -337,7 +337,7 @@ describe('AnimistBLE Service', function(){
       it('should broadcast "Animist:receivedTx" when tx transmission completes', function(){
 
          AnimistBLE.peripheral = {};
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
@@ -354,7 +354,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {
             address: ble_address,
             service: service_uuid,
-            tx: JSON.parse($ble.mockHasTxResult)
+            tx: JSON.parse($ble.mockGetContractResult)
          };
 
          AnimistBLE.peripheral.tx.expires = (Date.now() - 10000000);
@@ -373,7 +373,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {
             address: ble_address,
             service: service_uuid,
-            tx: JSON.parse($ble.mockHasTxResult)
+            tx: JSON.parse($ble.mockGetContractResult)
          };
 
          spyOn(AnimistBLE, 'connect').and.callThrough();
@@ -407,7 +407,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {
             address: ble_address,
             service: service_uuid,
-            tx: JSON.parse($ble.mockHasTxResult)
+            tx: JSON.parse($ble.mockGetContractResult)
          };
 
          spyOn(AnimistBLE, 'connect').and.callThrough();
@@ -495,7 +495,7 @@ describe('AnimistBLE Service', function(){
 
          AnimistBLE.peripheral = {};
          $ble.throwsWrite = true;
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          promise = AnimistBLE.openLink(beacon_id);   
          $timeout.flush();
@@ -508,7 +508,7 @@ describe('AnimistBLE Service', function(){
 
          AnimistBLE.peripheral = {};
          $ble.throwsNOTX = true;
-         $ble.emulateHasTx = true;
+         $ble.emulateGetContract = true;
 
          promise = AnimistBLE.openLink(beacon_id);    
          $timeout.flush();
@@ -545,7 +545,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.peripheral = {
             address: ble_address,
             service: service_uuid,
-            tx: JSON.parse($ble.mockHasTxResult)
+            tx: JSON.parse($ble.mockGetContractResult)
          };
 
          // Proximity and timestamp valid

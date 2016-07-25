@@ -8,7 +8,7 @@ angular.module('animistMocks', [])
     // Per ngCordovaMocks pattern:
     // setting 'throwsSomething' to true will run the rejection callback of 'something'
     //      for a given test. 
-    // setting 'emulateHasTx' to true notifies w/ a successful subscription
+    // setting 'emulateGetContract' to true notifies w/ a successful subscription
     //       and 5 notification packets ending in 'EOF', 
     // setting emulateWriteTx to true notifies w/ a successful subscription and a 
     //       single subsequent notice that mocks a txHash msg.
@@ -37,7 +37,7 @@ angular.module('animistMocks', [])
         self.throwsNOTX = false;
 
         // Flags to emulate different subscription results
-        self.emulateHasTx = false;
+        self.emulateGetContract = false;
         self.emulateWriteTx = false;
             
         // Encoding Utilities borrowed from $cordovaBluetoothLE & used by 
@@ -75,7 +75,7 @@ angular.module('animistMocks', [])
 
 
         // Public Mock Data
-        self.mockHasTxResult = "{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"state\":\"1\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
+        self.mockGetContractResult = "{\"code\":\"606060405261038180610013600061037c565b91905056\",\"proximity\":\"any\",\"state\":\"1\",\"authority\":\"5060f6b697a4e7b767863580a91a1f5e37c43c75\"}";
         self.mockWriteTxResult = "f88d028609184e72a000832dc6c0947764b6a2728a";
 
         // Private Mock data
@@ -85,7 +85,7 @@ angular.module('animistMocks', [])
         
         var pinResultRaw = self.encodeMock(pinResult);
 
-        var hasTxRaw = [
+        var getContractRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock("{\"code\":\"606060405261038180610013600061037c565b")},
             {status: 'notify', value: self.encodeMock("91905056\",\"proximity\":\"any\",\"state\":\"1")},
@@ -185,9 +185,9 @@ angular.module('animistMocks', [])
 
             if (self.throwsSubscribe){
                 defer.reject(generic);
-            } else if (self.emulateHasTx){
+            } else if (self.emulateGetContract){
 
-                angular.forEach(hasTxRaw, function(packet){
+                angular.forEach(getContractRaw, function(packet){
                     $timeout(function(){ defer.notify(packet) },0);
                 });
             } else if (self.emulateWriteTx){

@@ -14,7 +14,7 @@ This service manages interactions between mobile clients and Animist IoT endpoin
    to establish a BLE peripheral connection / read the endpoint's time-variant "pin".  
 
 3. AnimistBLE signs the pin with the private key of the current AnimistAccount and writes this value to 
-   the endpoint's 'hasTx' characteristic. The endpoint extracts the public account address from the 
+   the endpoint's 'getContract' characteristic. The endpoint extracts the public account address from the 
    pin message and searches its database of contracts for any that match the calling account. 
    (There should only be one).
 
@@ -64,7 +64,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     // Endpoint characteristic UUIDS
     var UUID = {
         pin : 'C40C94B3-D9FF-45A0-9A37-032D72E423A9',
-        hasTx:  'BFA15C55-ED8F-47B4-BD6A-31280E98C7BA',
+        getContract:  'BFA15C55-ED8F-47B4-BD6A-31280E98C7BA',
         authTx: '297E3B0A-F353-4531-9D44-3686CC8C4036',
         signTx : '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06'
     };
@@ -87,6 +87,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
        INVALID_JSON_IN_REQUEST:   0x02,
        NO_SIGNED_MSG_IN_REQUEST:  0x03,
        NO_TX_FOUND:               0x04,
+       NO_TX_ADDR_ERR:            0x05,
        RESULT_SUCCESS:            0x00,
        EOF :                      'EOF' 
     };
@@ -335,7 +336,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
                 self.peripheral.service = uuid;
                 
                 self.readPin().then(function(){ 
-                    self.subscribeHasTx().then(function(){
+                    self.subscribeGetContract().then(function(){
                                 
                         d.resolve();
                     
@@ -455,7 +456,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     // ------------------------- receivedTX Event  -----------------------------------
 
     // $on('Animist:receivedTx'): Responds to a successful tx retrieval. Event is 
-    // fired from subscribeHasTx. Checks proximity req and passes to submitTx for processing if  
+    // fired from subscribeGetContract. Checks proximity req and passes to submitTx for processing if  
     // ok OR closes the the connection to conserve resources and allow other clients to connect 
     // to the endpoint. 
     $rootScope.$on(events.receivedTx, function(){
@@ -467,7 +468,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
                 self.close();
 
         // A failsafe that doesn't get called in the current code (someone might call it someday). 
-        // The 'no tx' case is handled by rejection from subscribeHasTx . . . session gets killed 
+        // The 'no tx' case is handled by rejection from subscribeGetContract . . . session gets killed 
         // in the openLink error callback. 
         } else { 
             self.endSession(); 
@@ -648,21 +649,21 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         return d.promise;
     };
 
-    // subscribeHasTx(): subscribes to hasTx characteristic, then signs the endpoint pin and
+    // subscribeGetContract(): subscribes to GetContract characteristic, then signs the endpoint pin and
     // writes it back. Endpoint deciphers this and searches its db for qualifying contract code.
     // If contract is found it will respond RESULT_SUCCESS (0x00) to our write success callback and begin
     // transmitting packets to us in the subscription callback. We broadcast 'Animist:receivedTx' 
     // on success or reject through the write error callback on error.  
-    self.subscribeHasTx = function(){
+    self.subscribeGetContract = function(){
         
         var decoded, signedPin, msg = '';
-        var where = 'AnimistBLE:subscribeHasTx: ';
+        var where = 'AnimistBLE:subscribeGetContract: ';
         var d = $q.defer();
             
         var req = {
             address: self.peripheral.address,
             service: self.peripheral.service,
-            characteristic: UUID.hasTx,
+            characteristic: UUID.getContract,
             timeout: 5000
         };
 

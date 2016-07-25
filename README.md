@@ -1,6 +1,6 @@
 # wowshuxkluh
 
-[![Build Status](https://travis-ci.org/animist-io/wowshuxkluh.svg?branch=master)](https://travis-ci.org/animist-io/wowshuxkluh) **Warning: under construction / not currently usable.** 
+[![Build Status](https://travis-ci.org/animist-io/wowshuxkluh.svg?branch=master)](https://travis-ci.org/animist-io/wowshuxkluh) **Warning: under construction / not usable.** 
 
 Wowshuxkluh will be an an Angular 1.x library for Ionic.js that lets mobile devices automatically (or intentionally) connect to Ethereum IoT nodes over BluetoothLE and write transactions to the blockchain about their location. The project's goal is to make presence in space and time transactionally available to Ethereum contracts in a way that is tedious to spoof - e.g. it should provide a minimally competent location oracle for mobile. 
 
@@ -25,6 +25,11 @@ $ cordova plugin add cordova-plugin-bluetoothle                        // Blueto
 $ cordova plugin add cordova-plugin-background-mode-bluetooth-central  // iOS background mode perm.
 $ cordova plugin add com.unarin.cordova.beacon                         // iBeacon
 $ cordova plugin add https://github.com/shazron/KeychainPlugin.git     // iOS Keychain
+```
+
+## Testing
+```
+$ gulp test
 ```
 
 

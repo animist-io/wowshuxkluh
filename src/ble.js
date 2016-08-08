@@ -39,58 +39,18 @@ For more on endpoint behavior see animist-io/whale-island
 For more on simple Animist contract patterns and contract generation tools, see animist-io/wallowa.
 -----------------------------------------------------------------------------------------------------*/
 
-angular.module('animist')
-  .service("AnimistBLE", AnimistBLE);
+angular.module('animist').service("AnimistBLE", AnimistBLE);
 
-function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
+function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, AnimistConstants ){
 
     // Local ref to AnimistAccount user, set in initialize()
     var user = null; 
     
-    // Events 
-    var events = {
-        initiatedBLE: 'Animist:initiatedBLEConnection',
-        receivedTx: 'Animist:receivedTx',
-        signedTxSuccess: 'Animist:signedTxSuccess',
-        signedTxFailure: 'Animist:signedTxFailure',
-        signedTxMethodFailure: 'Animist:signedTxMethodFailure',
-        authTxSuccess: 'Animist:authTxSuccess',
-        authTxFailure: 'Animist:authTxFailure',
-        unauthorizedTx: 'Animist:unauthorizedTx',
-        noTxFound: 'Animist:noTxFound',
-        bleFailure: 'Animist:bleFailure'
-    };
-
-    // Endpoint characteristic UUIDS
-    var UUID = {
-        pin : 'C40C94B3-D9FF-45A0-9A37-032D72E423A9',
-        getContract:  'BFA15C55-ED8F-47B4-BD6A-31280E98C7BA',
-        authTx: '297E3B0A-F353-4531-9D44-3686CC8C4036',
-        signTx : '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06'
-    };
-
-    // Animist Beacon UUIDS (Keys) and corresponding endpoint service UUIDS (Vals)
-    var endpointMap = {
-
-        "4F7C5946-87BB-4C50-8051-D503CEBA2F19" : "05DEE885-E723-438F-B733-409E4DBFA694",
-        "D4FB5D93-B1EF-42CE-8C08-CF11685714EB" : "9BD991F7-0CB9-4FA7-A075-B3AB1B9CFAC8", 
-        "98983597-F322-4DC3-A36C-72052BF6D612" : "774D64CA-91C9-4C3A-8DA3-221D9CF755E7",
-        "8960D5AB-3CFA-46E8-ADE2-26A3FB462053" : "33A93F3C-9CAA-4D39-942A-6659AD039232",
-        "458735FA-E270-4746-B73E-E0C88EA6BEE0" : "01EC8B5B-B7DB-4D65-949C-81F4FD808A1A"
-    };
-
-    // These are common to whale-island and wowshuxkluh and 
-    // are passed in $cordova ble 'write' callbacks on success/failure
-    // **** Do NOT change here w/out updating whale-island code *****
-    var codes = {
-
-       INVALID_JSON_IN_REQUEST:   0x02,
-       NO_SIGNED_MSG_IN_REQUEST:  0x03,
-       NO_TX_FOUND:               0x04,
-       NO_TX_ADDR_ERR:            0x05,
-       RESULT_SUCCESS:            0x00,
-       EOF :                      'EOF' 
-    };
+    // Platform Data and Module Constants 
+    var events = AnimistConstants.events;
+    var UUID = AnimistConstants.serverCharacteristicUUIDs;
+    var endpointMap = AnimistConstants.serverServiceUUIDs;
+    var codes = AnimistConstants.serverHexCodes;
 
     // Weightings for proximity comparison: 
     // If the proximity requirement is 'far' we interpret that as
@@ -254,7 +214,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     // and reset the connection enabling a new attempt.
     self.listen = function(beaconId, proximity){
 
-        var NO_TX = 'NO_TX_FOUND';
+        var NO_TX = 'NO_TX_DB_ERR';
         var where = 'AnimistBLE:listen: ';
 
         var d = $q.defer();
@@ -356,7 +316,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         } else if (proximityMatch(self.peripheral.tx )) {
 
             self.connect(self.peripheral.address).then(function(){  
-                self.submitTx(self.peripheral.tx, customSignMethod );
+                self.sendTx(self.peripheral.tx, customSignMethod );
                 
                 d.resolve();
 
@@ -371,7 +331,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         return d.promise;
     }
 
-    // submitTx(): Called by $on("Animist:receivedTx") or openLink();
+    // sendTx(): Called by $on("Animist:receivedTx") or openLink();
     // 
     // a) writes signed tx to endpoint if user is authorized to do so, OR
     // b) writes a request to confirm users presence at this loc. if a remote authority 
@@ -380,29 +340,29 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     //
     // Ends session on success & unauthorizedTx, resets on technical failure.
     // Broadcasts message specific to each of the above, including error.
-    self.submitTx = function(tx, txMethod){
+    self.sendTx = function(tx, txMethod){
         
         var out = {};
 
         // Case: User can sign their own tx. Write tx & wait for response.
-        // Broadcasts txHash of the signedTx or error
+        // Broadcasts txHash of the sendTx or error
         if (tx.authority === user.address ) {
 
             out.tx = user.generateTx(tx.code, tx.state);
             out.id = tx.sessionId;
 
-            self.writeTx(out, UUID.signTx).then(
+            self.writeTx(out, UUID.sendTx).then(
 
                 function(txHash){ 
-                    $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} ); 
+                    $rootScope.$broadcast( events.sendTxSuccess, {txHash: txHash} ); 
                     self.endSession() }, 
                 function(error) {
-                     $rootScope.$broadcast( events.signedTxFailure, {error: error} ); 
+                     $rootScope.$broadcast( events.sendTxFailure, {error: error} ); 
                      self.reset() }
             );
 
         // Case: Signing remote (via txMethod) but submission local - Write tx & wait for response.
-        // Broadcasts txHash of the signedTx or error.
+        // Broadcasts txHash of the sendTx or error.
         } else if ( txMethod != undefined && typeof txMethod === 'function'){
 
             txMethod(tx).then(function(signedCode){
@@ -410,18 +370,18 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
                 out.tx = signedCode;
                 out.id = tx.sessionId;
 
-                    self.writeTx(out, UUID.signTx).then(
+                    self.writeTx(out, UUID.sendTx).then(
 
                         function(txHash){ 
-                            $rootScope.$broadcast( events.signedTxSuccess, {txHash: txHash} ); 
+                            $rootScope.$broadcast( events.sendTxSuccess, {txHash: txHash} ); 
                             self.endSession() }, 
                         function(error) {
-                            $rootScope.$broadcast( events.signedTxFailure, {error: error} ); 
+                            $rootScope.$broadcast( events.sendTxFailure, {error: error} ); 
                             self.reset() }
                     );
 
             }, function(error){
-                $rootScope.$broadcast( events.signedTxMethodFailure, {error: error} ); 
+                $rootScope.$broadcast( events.sendTxMethodFailure, {error: error} ); 
                 self.endSession();
             });
 
@@ -456,7 +416,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
     // ------------------------- receivedTX Event  -----------------------------------
 
     // $on('Animist:receivedTx'): Responds to a successful tx retrieval. Event is 
-    // fired from subscribeGetContract. Checks proximity req and passes to submitTx for processing if  
+    // fired from subscribeGetContract. Checks proximity req and passes to sendTx for processing if  
     // ok OR closes the the connection to conserve resources and allow other clients to connect 
     // to the endpoint. 
     $rootScope.$on(events.receivedTx, function(){
@@ -464,7 +424,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         if (self.peripheral.tx){
             
             proximityMatch(self.peripheral.tx) ? 
-                self.submitTx(self.peripheral.tx, customSignMethod ) : 
+                self.sendTx(self.peripheral.tx, customSignMethod ) : 
                 self.close();
 
         // A failsafe that doesn't get called in the current code (someone might call it someday). 
@@ -605,7 +565,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
 
     // ----------------Characteristic Subscriptions/Reads/Writes -----------------------------
     
-    // writeTx(out, dest): 'out' is a json object to be transmitted. 'dest' is either the signedTx
+    // writeTx(out, dest): 'out' is a json object to be transmitted. 'dest' is either the sendTx
     // or authTx characteristic uuid. Subscribes to characteristic, writes out and waits 
     // for / resolves the Ethereum tx hash of completed transaction. (Succesful subscription 
     // declares via notify callback)
@@ -723,7 +683,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount ){
         var req = {
             address: self.peripheral.address,
             service: self.peripheral.service,
-            characteristic: UUID.pin,
+            characteristic: UUID.getPin,
             timeout: 5000
         };
 

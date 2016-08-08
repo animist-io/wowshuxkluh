@@ -66,9 +66,7 @@ angular.module('animist')
                 onCapture(result);
             });
             
-            // Check authorization before resolving. Remove newInstall key 
-            // from local storage so that a pw/login will redirect to the settings
-            // page.
+            // Check authorization before resolving. 
             $cordovaBeacon.getAuthorizationStatus().then(
                 function(status){ self.initialized = true; d.resolve()}, 
                 function(error){  self.initialized = false; d.reject()}

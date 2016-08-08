@@ -357,6 +357,52 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 
         fnTx = wallet.txutils.functionTx(contract, fn, [], txOptions);
         return wallet.signing.signTx(keystore, key, fnTx, address);
+
+        // From whale-island experiments
+        // Deploy TestContract, compose some signed transactions for rawTx submission.
+        // Probably irrelevant since eth-lightwallet is supposed to do all of this for you.
+        return newContract( contracts.Test, { from: client })
+                .then( testContract => {
+                  deployed = testContract; 
+                  let code = web3.eth.getCode(deployed.address); 
+                  let abi = deployed.abi;
+                  let txOptions = {
+                    gasPrice: 1,
+                    gasLimit: 3000000,
+                    value: 0,
+                    nonce: 0,
+                    data: util.stripHexPrefix(code)
+                  }
+                  //console.log('code: ' + code);
+                  //let contractData = wallet.txutils.createContractTx(client, txOptions);
+                  //console.log('contractData: ' + JSON.stringify(contractData));
+                  //console.log('deployed: ' + deployed.address);
+                  //txOptions.to = util.stripHexPrefix(contractData.addr);
+                  
+                  txOptions.to = util.stripHexPrefix(deployed.address);
+                  let setTx = wallet.txutils.functionTx(abi, 'setState', [2], txOptions);
+                  
+                  let rawTx = util.stripHexPrefix(setTx);
+                  let signingAddress = util.stripHexPrefix(client);
+                  let txCopy = new Transaction(new Buffer(rawTx, 'hex'));
+                  let privKey = util.stripHexPrefix(keys[0])
+                  
+                  txCopy.sign(new Buffer(privKey, 'hex'));
+                  console.log('sender: ' + txCopy.getSenderAddress().toString('hex'));
+                  console.log('verify: ' + txCopy.verifySignature());
+                  let txCopyReg = txCopy.serialize().toString('hex');
+                  console.log(txCopyReg);
+                  let hash = web3.eth.sendRawTransaction(txCopyReg);
+                  console.log(web3.eth.getTransactionReceipt(hash))
+
+                  let animistContract = web3.eth.contract(abi);
+                  let instance = animistContract.at(deployed.address);
+                  let hash2 = instance.setState(3, {from: client});
+                  console.log();
+                  console.log(web3.eth.getTransactionReceipt(hash2));
+                  //console.log(hash2);
+
+                });
     };
 };
     

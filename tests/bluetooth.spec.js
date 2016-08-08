@@ -223,7 +223,7 @@ describe('AnimistBLE Service', function(){
 
       it('should broadcast "Animist:noTxFound" if endpoint does not find a tx and end the session', function(){
 
-         var expected_error = { where : 'AnimistBLE:subscribeGetContract: ', error : 'NO_TX_FOUND' };
+         var expected_error = { where : 'AnimistBLE:subscribeGetContract: ', error : 'NO_TX_DB_ERR' };
 
          // Trigger error
          $ble.throwsNOTX = true;
@@ -402,7 +402,7 @@ describe('AnimistBLE Service', function(){
 
       });
 
-      it('should connect and submitTx if cur. proximity meets cached tx requirements', function(){
+      it('should connect and sendTx if cur. proximity meets cached tx requirements', function(){
 
          AnimistBLE.peripheral = {
             address: ble_address,
@@ -411,7 +411,7 @@ describe('AnimistBLE Service', function(){
          };
 
          spyOn(AnimistBLE, 'connect').and.callThrough();
-         spyOn(AnimistBLE, 'submitTx');
+         spyOn(AnimistBLE, 'sendTx');
 
          AnimistBLE.peripheral.tx.expires = (Date.now() + 10000000);
          AnimistBLE.peripheral.tx.proximity = 'proximityNear';
@@ -422,7 +422,7 @@ describe('AnimistBLE Service', function(){
          $timeout.flush();
 
          expect(AnimistBLE.connect).toHaveBeenCalledWith(AnimistBLE.peripheral.address);
-         expect(AnimistBLE.submitTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx, undefined);
+         expect(AnimistBLE.sendTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx, undefined);
 
       });
 
@@ -514,15 +514,15 @@ describe('AnimistBLE Service', function(){
          $timeout.flush();
 
          expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value.error).toEqual('NO_TX_FOUND');
+         expect(promise.$$state.value.error).toEqual('NO_TX_DB_ERR');
 
       });
 
    });
 
-   // submitTx(tx): A controller that manages final transaction writes and auth requests to 
+   // sendTx(tx): A controller that manages final transaction writes and auth requests to 
    // the endpoint and wraps the session up on success/failure.
-   describe('submitTx(tx)', function(){
+   describe('sendTx(tx)', function(){
       var beacon_id, service_uuid, ble_address, pin, expected_request, promise, 
           signers, customSignerSucceeds, customSignerFails;
 
@@ -536,7 +536,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.initialize();
 
          spyOn(AnimistBLE, 'connect').and.callThrough();
-         spyOn(AnimistBLE, 'submitTx').and.callThrough();
+         spyOn(AnimistBLE, 'sendTx').and.callThrough();
          spyOn(AnimistBLE, 'writeTx').and.callThrough();
          spyOn(AnimistBLE, 'endSession');
          spyOn(AnimistBLE, 'reset');
@@ -581,8 +581,8 @@ describe('AnimistBLE Service', function(){
             tx: AnimistAccount.user.generateTx(AnimistBLE.peripheral.tx)
          };
 
-         // Hard coded signTx characteristic uuid
-         var signedTx_port_addr = '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06'
+         // Hard coded sendTx characteristic uuid
+         var sendTx_port_addr = '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06'
 
          // User has authority
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.address;
@@ -590,11 +590,11 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, signedTx_port_addr)
+         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
 
       });
 
-      it('should broadcast signedTxSuccess & txHash data if user write is ok and then end session', function(){
+      it('should broadcast sendTxSuccess & txHash data if user write is ok and then end session', function(){
 
          var expected_hash = {txHash: $ble.mockWriteTxResult}
 
@@ -605,12 +605,12 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxSuccess', expected_hash);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxSuccess', expected_hash);
          expect(AnimistBLE.endSession).toHaveBeenCalled();
 
       });
 
-      it('should broadcast signedTxFailure if user write fails and then end session', function(){
+      it('should broadcast sendTxFailure if user write fails and then end session', function(){
 
          var expected_error = { 
             error : { 
@@ -629,7 +629,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxFailure', expected_error);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxFailure', expected_error);
          expect(AnimistBLE.reset).toHaveBeenCalled();
       });
 
@@ -660,10 +660,10 @@ describe('AnimistBLE Service', function(){
 
       it('should custom sign and write a tx to "3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06" on custom sign success', function(){
 
-         var mock_tx, expected_out, signedTx_port_addr;
+         var mock_tx, expected_out, sendTx_port_addr;
 
-         // Hard coded signTx characteristic uuid
-         signedTx_port_addr = '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06';
+         // Hard coded sendTx characteristic uuid
+         sendTx_port_addr = '3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06';
 
          // Simulate call to custom signer
          signers.customSignerSucceeds(AnimistBLE.peripheral.tx).then(function(msg){ mock_tx = msg });
@@ -683,11 +683,11 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, signedTx_port_addr)
+         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
 
       });
 
-      it('should broadcast "signedTxMethodFailure" and reset on custom sign failure', function(){
+      it('should broadcast "sendTxMethodFailure" and reset on custom sign failure', function(){
 
          AnimistBLE.peripheral.tx.authority = AnimistAccount.user.remoteAuthority;
          $ble.emulateWriteTx = true;
@@ -698,12 +698,12 @@ describe('AnimistBLE Service', function(){
          $timeout.flush();
 
          expect(AnimistBLE.writeTx).not.toHaveBeenCalled();
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxMethodFailure', {error: 'failed' });
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxMethodFailure', {error: 'failed' });
          expect(AnimistBLE.endSession).toHaveBeenCalled();
 
       });
 
-      it('should broadcast "signedTxSuccess" & txHash data if custom sign write is ok and then end session', function(){
+      it('should broadcast "sendTxSuccess" & txHash data if custom sign write is ok and then end session', function(){
 
          var expected_hash = {txHash: $ble.mockWriteTxResult}
 
@@ -717,12 +717,12 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxSuccess', expected_hash);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxSuccess', expected_hash);
          expect(AnimistBLE.endSession).toHaveBeenCalled();
 
       });
 
-      it('should broadcast "signedTxFailure" if user write fails and then reset', function(){
+      it('should broadcast "sendTxFailure" if user write fails and then reset', function(){
 
          var expected_error = { 
             error : { 
@@ -744,7 +744,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:signedTxFailure', expected_error);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxFailure', expected_error);
          expect(AnimistBLE.reset).toHaveBeenCalled();
       });
 
@@ -761,7 +761,7 @@ describe('AnimistBLE Service', function(){
             pin: AnimistAccount.user.sign(AnimistBLE.pin)
          };
 
-         // Hard coded signTx characteristic uuid
+         // Hard coded sendTx characteristic uuid
          var authTx_port_addr = '297E3B0A-F353-4531-9D44-3686CC8C4036'
 
          // Remote agent has authority
@@ -833,14 +833,14 @@ describe('AnimistBLE Service', function(){
    });
 
    // $on('Animist:receivedTx'): Handles the response to a successful tx retrieval. Tx proximity
-   // requirement is checked and if ok, tx is passed to submitTx for processing, otherwise BLE
+   // requirement is checked and if ok, tx is passed to sendTx for processing, otherwise BLE
    // closes the connection to conserve resources and allow other clients to connect to the peripheral.
    describe("$on(): Animist:receivedTx", function(){
 
 
       it('should submit the tx back to endpoint if tx was found and proximity req is met', function(){
 
-         spyOn(AnimistBLE, 'submitTx');
+         spyOn(AnimistBLE, 'sendTx');
 
          AnimistBLE.proximity = 'proximityNear';
          AnimistBLE.peripheral = { tx: { proximity: 'proximityNear'}};
@@ -848,13 +848,13 @@ describe('AnimistBLE Service', function(){
          $scope.$broadcast('Animist:receivedTx');
          $scope.$digest();
 
-         expect(AnimistBLE.submitTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx, undefined);
+         expect(AnimistBLE.sendTx).toHaveBeenCalledWith(AnimistBLE.peripheral.tx, undefined);
 
       });
 
       it('should close the connection if tx was found and proximity req is NOT met', function(){
 
-         spyOn(AnimistBLE, 'submitTx');
+         spyOn(AnimistBLE, 'sendTx');
          spyOn(AnimistBLE, 'close');
 
          AnimistBLE.proximity = 'proximityFar';
@@ -863,7 +863,7 @@ describe('AnimistBLE Service', function(){
          $scope.$broadcast('Animist:receivedTx');
          $scope.$digest();
 
-         expect(AnimistBLE.submitTx).not.toHaveBeenCalled();
+         expect(AnimistBLE.sendTx).not.toHaveBeenCalled();
          expect(AnimistBLE.close).toHaveBeenCalled();
 
       });
@@ -871,7 +871,7 @@ describe('AnimistBLE Service', function(){
       it('should end the session if no tx was found', function(){
 
          spyOn(AnimistBLE, 'endSession');
-         spyOn(AnimistBLE, 'submitTx');
+         spyOn(AnimistBLE, 'sendTx');
    
          AnimistBLE.proximity = 'proximityFar';
          AnimistBLE.peripheral = { tx: null };
@@ -879,7 +879,7 @@ describe('AnimistBLE Service', function(){
          $scope.$broadcast('Animist:receivedTx');
          $scope.$digest();
 
-         expect(AnimistBLE.submitTx).not.toHaveBeenCalled();
+         expect(AnimistBLE.sendTx).not.toHaveBeenCalled();
          expect(AnimistBLE.endSession).toHaveBeenCalled();
       });
 

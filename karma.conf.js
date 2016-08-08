@@ -28,6 +28,7 @@ module.exports = function(config) {
          "src/accounts.js",
          "src/beacon.js",
          "src/ble.js",
+         "src/constants.js",
 
          "tests/animist.mocks.js",
 

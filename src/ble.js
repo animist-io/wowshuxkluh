@@ -385,7 +385,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
      * signed copy of it is required to access some of the server's endpoints. It's used 
      * to help verify client is present 'in time'.
      * @method  getPin 
-     * @return {String} 32 character alpha-numeric pin
+     * @return {Promise} Resolves string: 32 character alpha-numeric pin
+     * @return {Promise} Rejects with error object
      */
     self.getPin = function(){ 
         return self.read(UUID.getPin)
@@ -398,7 +399,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
      * This address identifies the node in IPFS and is the account used to execute Animist 
      * contract API methods on client's behalf. 
      * @method  getDeviceAccount
-     * @return {String} Hex prefixed address string
+     * @return {Promise} Resolves string: Hex prefixed address 
+     * @return {Promise} Rejects with error object
      */
     self.getDeviceAccount = function(){
         return self.read(UUID.getDeviceAccount)
@@ -408,7 +410,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
 
     /**
      * Gets current blockNumber (and caches it in self.peripheral). 
-     * @return {Number} web3.eth.blockNumber
+     * @return {Promise} Resolves string: web3.eth.blockNumber
+     * @return {Promise} Rejects with error object
      */
     self.getBlockNumber = function(){
         return self.read(UUID.getBlockNumber)
@@ -421,8 +424,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
      * a transaction has been mined yet. (blockNumber will be null if tx is pending.) 
      * @method  getTxStatus 
      * @param  {String} txHash : hex prefixed transaction hash.
-     * @return {Object} { blockNumber: "150..1", nonce: "77", gas: "314..3" }
-     * @return {String} 'null'
+     * @return {Promise} Resolves object: { blockNumber: "150..1", nonce: "77", gas: "314..3" }
+     * @return {Promise} Rejects with string: 'null'
      */
     self.getTxStatus = function(txHash){
         return self.write(txHash, UUID.getTxStatus)
@@ -433,7 +436,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
     /**
      * @method  getAccountBalance 
      * @param  {String} address : hex prefixed account address
-     * @return {BigNumber} TO DO . . . . ethereumjs-util. . . .
+     * @return {Promise} Resolves BigNumber TO DO . . . . ethereumjs-util. . . .
+     * @return {Promise} Rejects w/ ???
      */
     self.getAccountBalance = function(address){
         return self.write(address, UUID.getAccountBalance)
@@ -446,7 +450,8 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
      * Useful for retrieving data from a contract 'synchronously'.
      * @method  callTx 
      * @param  {Object} tx {to: '0x929...ae', code: '0xae45...af'}
-     * @return {Value} web3.eth.call(tx)
+     * @return {Promise} Resolves string: result of web3.eth.call(tx)
+     * @return {Promise} Rejects with error object
      */
     self.callTx = function(tx){
         return self.write(tx, UUID.callTx)
@@ -455,12 +460,19 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
     }
 
     // -------------------- PIN-Access Server Endpoints  --------------------------------
-    
+    /**
+     * Gets a new sessionId linked to caller account from server. A valid sessionId is 
+     * required to use the sendTx and authAndSendTx server endpoints.
+     * @method  getNewSessionId 
+     * @return {Promise} Resolves object { sessionId: "a34..4q', expires: '435...01', account: '0x78ef..a' }
+     * @return {Promise} Rejects with error object
+     */
     self.getNewSessionId = function(){
 
         var d = $q.defer();
         
         self.getPin().then(function(pin){
+            pin = user.sign(pin);
             self.write(pin, UUID.getNewSessionId)
                 .then(function(res){ d.resolve(res) })
                 .catch(function(err){ d.reject(err) })
@@ -470,8 +482,99 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         return d.promise;
     }
 
-    self.getPresenceReceipt = function(){}
-    self.getVerifiedTxHash = function(){}
+    /**
+     * Returns data that can be used to authenticate client's proximity to the animist node. 
+     * Response includes a timestamp, the timestamp signed by the device account, and the caller's 
+     * address signed by the device account (using web3.sign). This method is useful
+     * if you wish implement your own presence verification strategy in contract code and
+     * can run an ethereum light-client on your client's device, or have a server that can 
+     * independently validate this data.
+     * @method  getPresenceReceipt 
+     * @return {Promise} Resolves object {time: '1453...9', signedTime: '0xaf..9e', signedAddress: '0x32...ae'}
+       @return {Promise} Rejects with error object
+    */
+    self.getPresenceReceipt = function(){
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            self.write(pin, UUID.getPresenceReceipt)
+                .then(function(res){ d.resolve(res) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
+    /**
+     * Gets the hash of a transaction submitted by an atomic authAndSend request. 
+     * Hash is available once the authTx has been mined and caller's transaction has been 
+     * published to chain. Also returns authStatus data which may be 'pending' or 'failed' 
+     * if authTx is unmined or ran out of gas.
+     * @method getVerifiedTxHash 
+     * @return {Promise} Resolves object {authStatus: "success", authTxHash: "0x7d..3", verifiedTxHash: "0x32..e" } 
+     * @return {Promise} Rejects with error object
+     */
+    self.getVerifiedTxHash = function(){
+
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            self.write(pin, UUID.getVerifiedTxHash)
+                .then(function(res){ d.resolve(res) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
+    /**
+     * Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
+     * method with the device account. Returns transaction hash.
+     * @method  authTx 
+     * @return {Promise} Resolves string: transaction hash
+     * @return {Promise} Rejects with error object
+     */
+    self.authTx = function(){
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            self.write(pin, UUID.authTx)
+                .then(function(res){ d.resolve(res) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
+    /**
+     * Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
+     * method with the device account. Waits for auth to be mined and sends clients raw transaction. 
+     * This method provides a way of authenticating and sending a transaction in a single step.        
+     * @method  authAndSendTx 
+     * @param  {String} rawTx : transaction signed by the user. 
+     * @return {Promise} Resolves string: authTx hash
+     * @return {Promise} Rejects with error object
+     */
+    self.authAndSendTx = function(rawTx){
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            self.write({pin: pin, tx: rawTx}, UUID.authAndSendTx)
+                .then(function(res){ d.resolve(res) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
 
 
 
@@ -659,7 +762,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
                     req.value = out;
                     $cordovaBluetoothLE.write(req).then(
                         function(success){}, 
-                        function(error){ d.reject({where: where, error: error})}
+                        function(error){ d.reject({where: where, error: parseCode(error) })}
                     );
 
                 // Notification handler: resolves txHash
@@ -705,7 +808,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
 
                     $cordovaBluetoothLE.write(req).then(
                         function(success){}, 
-                        function(error){d.reject({where: where, error: parseCode(error)})}
+                        function(error){d.reject({where: where, error: parseCode(error) })}
                     );
 
                 // Notification handler: Assembles tx transmission and
@@ -747,7 +850,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         // Decode response and update pin value
         return $cordovaBluetoothLE.read( req )
             .then(function(res){  return decode(res.value) }) 
-            .catch(function(err){ return $q.reject( {where: where, error: err} )})   
+            .catch(function(err){ return $q.reject( { where: where, error: parseCode(err) } )})   
     }
 
     

@@ -1,6 +1,3 @@
-
-//(function(){
-
 "use strict"
 
 var acc_debug;
@@ -361,7 +358,7 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
         // From whale-island experiments
         // Deploy TestContract, compose some signed transactions for rawTx submission.
         // Probably irrelevant since eth-lightwallet is supposed to do all of this for you.
-        return newContract( contracts.Test, { from: client })
+        /*return newContract( contracts.Test, { from: client })
                 .then( testContract => {
                   deployed = testContract; 
                   let code = web3.eth.getCode(deployed.address); 
@@ -402,8 +399,7 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
                   console.log(web3.eth.getTransactionReceipt(hash2));
                   //console.log(hash2);
 
-                });
+                });*/
     };
 };
     
-//})();

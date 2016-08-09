@@ -259,7 +259,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.initialize();
 
          spyOn(AnimistBLE, 'scanConnectAndDiscover').and.callThrough();
-         spyOn(AnimistBLE, 'readPin').and.callThrough();
+         spyOn(AnimistBLE, 'getPin').and.callThrough();
          spyOn(AnimistBLE, 'subscribeGetContract').and.callThrough();
          spyOn($scope, '$broadcast');
 
@@ -278,19 +278,19 @@ describe('AnimistBLE Service', function(){
          $timeout.flush();
 
          expect(AnimistBLE.scanConnectAndDiscover).toHaveBeenCalledWith(service_uuid);
-         expect(AnimistBLE.readPin).toHaveBeenCalled();
+         expect(AnimistBLE.getPin).toHaveBeenCalled();
          expect(AnimistBLE.subscribeGetContract).toHaveBeenCalled();
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:initiatedBLEConnection');
 
          expect(AnimistBLE.peripheral.address).toEqual(ble_address);
          expect(AnimistBLE.peripheral.service).toEqual(service_uuid);
          expect(AnimistBLE.peripheral.tx).toEqual($ble.mockGetContractResult);
-         expect(AnimistBLE.pin).toEqual(pin);
+         expect(AnimistBLE.peripheral.pin).toEqual(pin);
 
       });
 
       // Hard coded Animist characteristic uuid checks . . . .
-      it('should readPin from characteristic: "C40C94B3-D9FF-45A0-9A37-032D72E423A9"', function(){
+      it('should getPin from characteristic: "C40C94B3-D9FF-45A0-9A37-032D72E423A9"', function(){
 
          AnimistBLE.peripheral = {};
          $ble.emulateGetContract = true;
@@ -537,7 +537,7 @@ describe('AnimistBLE Service', function(){
 
          spyOn(AnimistBLE, 'connect').and.callThrough();
          spyOn(AnimistBLE, 'sendTx').and.callThrough();
-         spyOn(AnimistBLE, 'writeTx').and.callThrough();
+         spyOn(AnimistBLE, 'write').and.callThrough();
          spyOn(AnimistBLE, 'endSession');
          spyOn(AnimistBLE, 'reset');
          spyOn($scope, '$broadcast');
@@ -590,7 +590,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
+         expect(AnimistBLE.write).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
 
       });
 
@@ -614,7 +614,7 @@ describe('AnimistBLE Service', function(){
 
          var expected_error = { 
             error : { 
-               where : 'AnimistBLE:writeTx: ', 
+               where : 'AnimistBLE:write: ', 
                error : { 
                   error : 'failed' 
                } 
@@ -683,7 +683,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
+         expect(AnimistBLE.write).toHaveBeenCalledWith(expected_out, sendTx_port_addr)
 
       });
 
@@ -697,7 +697,7 @@ describe('AnimistBLE Service', function(){
          AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).not.toHaveBeenCalled();
+         expect(AnimistBLE.write).not.toHaveBeenCalled();
          expect($scope.$broadcast).toHaveBeenCalledWith('Animist:sendTxMethodFailure', {error: 'failed' });
          expect(AnimistBLE.endSession).toHaveBeenCalled();
 
@@ -726,7 +726,7 @@ describe('AnimistBLE Service', function(){
 
          var expected_error = { 
             error : { 
-               where : 'AnimistBLE:writeTx: ', 
+               where : 'AnimistBLE:write: ', 
                error : { 
                   error : 'failed' 
                } 
@@ -758,7 +758,7 @@ describe('AnimistBLE Service', function(){
          
          var expected_out = {
             id: AnimistBLE.peripheral.tx.sessionId,
-            pin: AnimistAccount.user.sign(AnimistBLE.pin)
+            pin: AnimistAccount.user.sign(AnimistBLE.peripheral.pin)
          };
 
          // Hard coded sendTx characteristic uuid
@@ -770,7 +770,7 @@ describe('AnimistBLE Service', function(){
          promise = AnimistBLE.openLink(beacon_id);
          $timeout.flush();
 
-         expect(AnimistBLE.writeTx).toHaveBeenCalledWith(expected_out, authTx_port_addr)
+         expect(AnimistBLE.write).toHaveBeenCalledWith(expected_out, authTx_port_addr)
 
       });
 
@@ -794,7 +794,7 @@ describe('AnimistBLE Service', function(){
 
          var expected_error = { 
             error : { 
-               where : 'AnimistBLE:writeTx: ', 
+               where : 'AnimistBLE:write: ', 
                error : { 
                   error : 'failed' 
                } 

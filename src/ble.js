@@ -1,44 +1,5 @@
 "use strict"
 
-/*--------------------------------------------------------------------------------------------------- 
-SERVICE: AnimistBLE
-Author: cgewecke June 2016
-
-This service manages interactions between mobile clients and Animist IoT endpoints 
-(at: animist-io/whale-island) over Bluetooth LE. Design overview below:
-
-1. Endpoints broadcast a persistent beacon signal which will wake a mobile client up
-   and activate AnimistBLE via the client's beacon capture callback. (See AnimistBeacon )
-
-2. AnimistBLE matches the beacon uuid to a pre-determined endpoint service uuid and uses this
-   to establish a BLE peripheral connection / read the endpoint's time-variant "pin".  
-
-3. AnimistBLE signs the pin with the private key of the current AnimistAccount and writes this value to 
-   the endpoint's 'getContract' characteristic. The endpoint extracts the public account address from the 
-   pin message and searches its database of contracts for any that match the calling account. 
-   (There should only be one).
-
-4. The endpoint sends back an object consisting of contract code, a proximity requirement, a 
-   sessionId, a session expiration date, and the address specified as the contracts
-   'authority' e.g. the address the contract expects to sign the tx. 
-
-5. At this point ( assuming contract requirements about proximity are met ) there are three possiblities:  
-
-   a) The user is authorized to sign their own transaction: AnimistBLE transmits code signed w/ the user key,
-      and receives the Ethereum transaction hash for the mined operation. 
-    
-   b) Someone other than the user (like the App provider) needs to sign the transaction - it gets sent 
-      to the cloud and returns signed. AnimistBLE submits this to the endpoint and gets the hash. 
-
-   c) Like b), but the signed transaction will get submitted off device at another Ethereum node. AnimistBLE 
-      just asks the endpoint to write an authentication tx to the blockchain verifying the client's presence at 
-      this location. (Also gets a hash).
-
-For more on account details and client behavior re: contracts, see animist-io/wowshuxkluh/src/accounts.js
-For more on endpoint behavior see animist-io/whale-island
-For more on simple Animist contract patterns and contract generation tools, see animist-io/wallowa.
------------------------------------------------------------------------------------------------------*/
-
 angular.module('animist').service("AnimistBLE", AnimistBLE);
 
 function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, AnimistConstants ){
@@ -295,7 +256,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
                 self.peripheral.address = address;
                 self.peripheral.service = uuid;
                 
-                self.readPin().then(function(){ 
+                self.getPin().then(function(){ 
                     self.subscribeGetContract().then(function(){
                                 
                         d.resolve();
@@ -351,7 +312,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
             out.tx = user.generateTx(tx.code, tx.state);
             out.id = tx.sessionId;
 
-            self.writeTx(out, UUID.sendTx).then(
+            self.write(out, UUID.sendTx).then(
 
                 function(txHash){ 
                     $rootScope.$broadcast( events.sendTxSuccess, {txHash: txHash} ); 
@@ -370,7 +331,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
                 out.tx = signedCode;
                 out.id = tx.sessionId;
 
-                    self.writeTx(out, UUID.sendTx).then(
+                    self.write(out, UUID.sendTx).then(
 
                         function(txHash){ 
                             $rootScope.$broadcast( events.sendTxSuccess, {txHash: txHash} ); 
@@ -391,9 +352,9 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         } else if ( tx.authority === user.remoteAuthority){
 
             out.id = tx.sessionId;
-            out.pin = user.sign(self.pin);
+            out.pin = user.sign(self.peripheral.pin);
 
-            self.writeTx(out, UUID.authTx).then(
+            self.write(out, UUID.authTx).then(
                 
                 function(txHash){ 
                     $rootScope.$broadcast( events.authTxSuccess, {txHash: txHash} ); 
@@ -412,7 +373,108 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         }
     };
 
+    // -------------------- Public (non-pin) Server Endpoints  ----------------------------
     
+    // getPin: Reads the value of the pin characteristic. This updates constantly on the 
+    // endpoint side and is used to verify that mobile client is present 'in time'. This
+    // pin will get signed by the user and returned to endpoint for transaction search and
+    // auth requests. 
+    
+    /**
+     * Reads the value of the pin characteristic. This updates every ~30sec and a client
+     * signed copy of it is required to access some of the server's endpoints. It's used 
+     * to help verify client is present 'in time'.
+     * @method  getPin 
+     * @return {String} 32 character alpha-numeric pin
+     */
+    self.getPin = function(){ 
+        return self.read(UUID.getPin)
+            .then( function(res){ return self.peripheral.pin = res })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    /**
+     * Gets Animist node's public account address (and caches it in self.peripheral). 
+     * This address identifies the node in IPFS and is the account used to execute Animist 
+     * contract API methods on client's behalf. 
+     * @method  getDeviceAccount
+     * @return {String} Hex prefixed address string
+     */
+    self.getDeviceAccount = function(){
+        return self.read(UUID.getDeviceAccount)
+            .then( function(res){ return self.peripheral.deviceAccount = res })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    /**
+     * Gets current blockNumber (and caches it in self.peripheral). 
+     * @return {Number} web3.eth.blockNumber
+     */
+    self.getBlockNumber = function(){
+        return self.read(UUID.getBlockNumber)
+            .then( function(res){ return self.peripheral.blockNumber = parseInt(res) })
+            .catch( function(err){ return $q.reject(err) });
+    } 
+
+    /**
+     * Gets small subset of web3 data about a transaction. Useful for determining if 
+     * a transaction has been mined yet. (blockNumber will be null if tx is pending.) 
+     * @method  getTxStatus 
+     * @param  {String} txHash : hex prefixed transaction hash.
+     * @return {Object} { blockNumber: "150..1", nonce: "77", gas: "314..3" }
+     * @return {String} 'null'
+     */
+    self.getTxStatus = function(txHash){
+        return self.write(txHash, UUID.getTxStatus)
+            .then( function(res){ return res })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    /**
+     * @method  getAccountBalance 
+     * @param  {String} address : hex prefixed account address
+     * @return {BigNumber} TO DO . . . . ethereumjs-util. . . .
+     */
+    self.getAccountBalance = function(address){
+        return self.write(address, UUID.getAccountBalance)
+            .then( function(res){ return res })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    /**
+     * Equivalent to making a web.eth.call for unsigned public constant methods.
+     * Useful for retrieving data from a contract 'synchronously'.
+     * @method  callTx 
+     * @param  {Object} tx {to: '0x929...ae', code: '0xae45...af'}
+     * @return {Value} web3.eth.call(tx)
+     */
+    self.callTx = function(tx){
+        return self.write(tx, UUID.callTx)
+            .then( function(res){ return res })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    // -------------------- PIN-Access Server Endpoints  --------------------------------
+    
+    self.getNewSessionId = function(){
+
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            self.write(pin, UUID.getNewSessionId)
+                .then(function(res){ d.resolve(res) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
+    self.getPresenceReceipt = function(){}
+    self.getVerifiedTxHash = function(){}
+
+
+
     // ------------------------- receivedTX Event  -----------------------------------
 
     // $on('Animist:receivedTx'): Responds to a successful tx retrieval. Event is 
@@ -565,13 +627,13 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
 
     // ----------------Characteristic Subscriptions/Reads/Writes -----------------------------
     
-    // writeTx(out, dest): 'out' is a json object to be transmitted. 'dest' is either the sendTx
+    // write(out, dest): 'out' is a json object to be transmitted. 'dest' is either the sendTx
     // or authTx characteristic uuid. Subscribes to characteristic, writes out and waits 
     // for / resolves the Ethereum tx hash of completed transaction. (Succesful subscription 
     // declares via notify callback)
-    self.writeTx = function(out, dest){
+    self.write = function(out, dest){
     
-        var where = 'AnimistBLE:writeTx: ';
+        var where = 'AnimistBLE:write: ';
         var d = $q.defer();
 
         // Characteristic params
@@ -638,7 +700,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
                 // or other error. 
                 if (sub.status === 'subscribed'){
 
-                    signedPin = user.sign(self.pin);
+                    signedPin = user.sign(self.peripheral.pin);
                     req.value = encode(signedPin);
 
                     $cordovaBluetoothLE.write(req).then(
@@ -669,37 +731,26 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         return d.promise;
     }
 
-    // readPin: Reads the value of the pin characteristic. This updates constantly on the 
-    // endpoint side and is used to verify that mobile client is present 'in time'. This
-    // pin will get signed by the user and returned to endpoint for transaction search and
-    // auth requests. 
-    self.readPin = function(){
+
+    self.read = function(uuid){
+
+        var where = 'AnimistBLE:read: ' + uuid;
         
-        var decoded;
-        var where = 'AnimistBLE:readPIN: ';
-        var d = $q.defer();
-        
-        // Compose subscribe req to pin characteristic
+        // Compose subscribe req to characteristic
         var req = {
             address: self.peripheral.address,
             service: self.peripheral.service,
-            characteristic: UUID.getPin,
+            characteristic: uuid,
             timeout: 5000
-        };
+        }; 
 
         // Decode response and update pin value
-        $cordovaBluetoothLE.read(req).then(function(pin){ 
-        
-            self.pin = decode(pin.value); 
-            d.resolve()
-        
-        }, function(error){ d.reject({where: where, error: error})});
-        
-        return d.promise;
-    };
+        return $cordovaBluetoothLE.read( req )
+            .then(function(res){  return decode(res.value) }) 
+            .catch(function(err){ return $q.reject( {where: where, error: err} )})   
+    }
 
-
-
+    
     // Remote Meteor Debugging
     function logger(msg, obj){
         //(Meteor) ? 

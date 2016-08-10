@@ -6,11 +6,18 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
 
     // ------------------------------ Public Vars --------------------------------------
     
-    // Obj representing the animist endpoint we connect to.
+    /**
+     * Obj representing the animist endpoint we connect to.
+     * @var {Object} peripheral
+     */
     self.peripheral = {};
 
-    // State values that can be tested against in the listen()
-    // resolve/reject callbacks or referenced directly in Angular / reactive uis
+    
+    /**
+     * State values that can be tested against in AnimistBluetoothAuto.listen() loop,
+     * resolve/reject callbacks or referenced directly in Angular UIs
+     * @var {Object} stateMap
+     */
     self.stateMap = {
         PROXIMITY_UNKNOWN: 0,
         TRANSACTING: 1,
@@ -20,9 +27,6 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
         NOT_INITIALIZED: 6,
         INITIALIZED: 7
     };
-
-    // Initial state
-    self.state = self.stateMap.NOT_INITIALIZED;
 
     // ------------------------------ Utilities --------------------------------------
     // encode(): Prep string for transmission over BLE.
@@ -50,8 +54,17 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
     }
 
     // -------------------------- Core Service Initialization  -------------------------
-    // initialize(): Must be called before listen() can begin. Validates user
-    // object then hardware inits via $cordovaBLE
+    
+    // Initial state
+    self.state = self.stateMap.NOT_INITIALIZED;
+    
+    /**
+     * Hardware inits. Must succeed before AnimistBluetoothAuto or AnimistBluetooth core
+     * methods can be called. 
+     * @method  initialize 
+     * @return {Promise} Resolves on $cordova's notify callback
+     * @return {Promise} Rejects with error object
+     */
     self.initialize = function(){
 
         var where = 'AnimistBLE:initialize: ';
@@ -74,13 +87,16 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
     };
 
     // -------------------------- Connection Opening Methods  -------------------------
-    // 
-    //  scanConnectAndDiscover(serviceUUID): Wraps a set of sequential calls to
-    //  $cordovaBluetoothLE ::scan() ::connect() ::discover(). This is boiler plate
-    //  necessary for an inital connection even if we know service uuid and 
-    //  characteristics (on iOS at least.) Resolves MAC address of endpoint or rejects.
-    //  Note: Scan, discover and connect all 'succeed' via the notify callback rather than 
-    //  resolve.
+    
+    /**
+     * Wraps a set of sequential calls to $cordovaBluetoothLE ::scan() ::connect() ::discover(). 
+     * This is boiler plate necessary for an inital connection even if we know service uuid and 
+     * characteristics (on iOS at least.)
+     * @method scanConnectAndDiscover 
+     * @param  {String} serviceUUID: server BLE service uuid  
+     * @return {Promise} Resolves string: MAC address of server node. (on $cordova's notify callback) 
+     * @return {Promise} Rejects w/ error object       
+     */
     self.scanConnectAndDiscover = function(serviceUUID){
 
         var where = 'AnimistBluetoothCore:scanConnectAndDiscover: '
@@ -130,13 +146,14 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
         );
         return d.promise;
     };
-
-    // connect(): AnimistBluetoothCore wrapper for $cordovaBluetoothLE:connect()
-    // This is called when we have already connected during a session and
-    // do not need to go through scan/connect/discover process to access
-    // characteristics. Use cases are: when a proximity that was inadequate
-    // meets the cached txs requirement & technical disconnections. 
-    // (Successful connection declares via notify callback )
+    /**
+     * Connects to server node. Usuable only when we have already connected during a session and
+     * no longer need to go through scan/connect/discover process to access characteristics.
+     * @method  connect 
+     * @param  {String} address: MAC address of scanned node
+     * @return {Promise} Resolves on $cordova's notify callback
+     * @return {Promise} Rejects w/ error object
+     */
     self.connect = function( address ){
 
         var where = 'AnimistBluetoothCore:connect: '
@@ -158,11 +175,12 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
 
     // ------------------ Connection Closing Methods -----------------------------
  
-    // close(): Called on its own when a transaction is first discovered but the 
-    // the proximity requirement hasn't been met. Closing frees up the endpoint 
-    // for other clients and minimizes likelyhood of our connection timing out. 
-    // AnimistBeacon will continue to ping us w/ new proximity 
-    // readings; these get parsed in openLink() to determine if we should reconnect. 
+    /**
+     * Closes the server connection and sets core state to 'cached'. Used when
+     * we intend to reconnect. Closing frees up the node for other clients and 
+     * minimized likelyhood of our connection timing out.
+     * @method  close 
+     */
     self.close = function(){
         var where = "AnimistBluetoothCore:close: ";
         var param = { address: self.peripheral.address };
@@ -172,10 +190,13 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
             }
         );
     };
-
-    // endSession(): Called when transaction is completed OR no transaction 
-    // was found. Stops any reconnection attempt while client is in current 
-    // beacon region. 
+ 
+    /**
+     * Closes server connection and sets core state to 'completed'. Used when
+     * we want to prevent any reconnection attempt while client is in current 
+     * beacon region. 
+     * @method  endSession 
+     */
     self.endSession = function(){
         
         var param = { address: self.peripheral.address };
@@ -191,6 +212,13 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
     // sessionId times out, or on connection error - resets all the state variables 
     // and enables a virgin connection. BLE remains initialized. OK if address DNE -
     // $BluetoothLE will handle that.
+    
+    /**
+     * Closes server connection and sets core state to 'initialized', while wiping
+     * core peripheral object. Called in the exit_region callback of AnimistBeacon (i.e
+     * when client has moved out of range. Implies we will not be reconnecting to this node. 
+     * @method  reset 
+     */
     self.reset = function(){
 
         var where = "AnimistBluetoothCore:reset: ";

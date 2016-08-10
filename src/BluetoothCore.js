@@ -298,14 +298,17 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
                 if (sub.status === 'subscribed'){
 
                     req.value = out;
-                    $cordovaBluetoothLE.write(req).then(
-                        function(success){}, 
-                        function(error){ d.reject({where: where, error: parseCode(error) })}
-                    );
+                    $cordovaBluetoothLE.write(req).catch(function(error){
+                        $cordovaBluetoothLE.unsubscribe(req).finally(function(){
+                            d.reject({where: where, error: parseCode(error) });
+                        })
+                    })
 
                 // Notification handler: resolves txHash
                 } else {
-                    d.resolve( decode(sub.value) );
+                    $cordovaBluetoothLE.unsubscribe(req).finally(function(){
+                        d.resolve( decode(sub.value) );
+                    });
                 };
             }
         ); 
@@ -347,11 +350,12 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
 
                     req.value = encode(out);
 
-                    $cordovaBluetoothLE.write(req).then(
-                        function(success){}, 
-                        function(error){d.reject({where: where, error: parseCode(error) })}
-                    );
-
+                    $cordovaBluetoothLE.write(req).catch(function(error){
+                        $cordovaBluetoothLE.unsubscribe(req).finally(function(){
+                            d.reject({where: where, error: parseCode(error) });
+                        })
+                    })
+    
                 // Notification handler: Assembles transmission and
                 // broadcasts receivedTx event when message is EOF
                 } else {
@@ -359,7 +363,8 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
                     
                     (decoded != 'EOF')
                         ? msg += decoded
-                        : d.resolve(msg)
+                        : $cordovaBluetoothLE.unsubscribe(req)
+                            .finally(function(){ d.resolve(msg) });
                 };
             }
         );

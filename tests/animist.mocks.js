@@ -200,6 +200,10 @@ angular.module('animistMocks', [])
             return defer.promise;
         };
 
+        self.unsubscribe = function (params) {
+            return $q.when(true);
+        };
+
         self.write = function(params){
 
             var defer = $q.defer();

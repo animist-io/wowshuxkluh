@@ -27,7 +27,7 @@ module.exports = function(config) {
          "src/animist.js",
          "src/accounts.js",
          "src/beacon.js",
-         "src/ble.js",
+         //"src/ble.js",
          "src/constants.js",
          "src/bluetoothAPI.js",
          "src/bluetoothAuto.js",
@@ -35,11 +35,11 @@ module.exports = function(config) {
 
          "tests/animist.mocks.js",
 
-         "tests/bluetooth.spec.js",
+         //"tests/bluetooth.spec.js",
          "tests/beacon.spec.js",
          "tests/accounts.spec.js",
-         //"tests/bluetoothCore.spec.js",
-         //"tests/bluetoothAuto.spec.js",
+         "tests/bluetoothCore.spec.js",
+         "tests/bluetoothAuto.spec.js",
          //"tests/bluetoothAPI.spec.js"
          
       ],

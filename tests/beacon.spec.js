@@ -7,17 +7,19 @@ describe('AnimistBeacons Service', function () {
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
     beforeEach(module('ngCordovaMocks')); // ngCordova
 
-    var $scope, $q, $cordovaBeacon, Beacons, AnimistBLE, AnimistAccount, d;
+    var $scope, $q, $cordovaBeacon, Core, Auto, Beacons, AnimistAccount, d;
 
-    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_, _AnimistBLE_ ){
+    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_, 
+                               _AnimistBluetoothCore_, _AnimistBluetoothAuto_ ){
         
         $scope = _$rootScope_;
         $cordovaBeacon = _$cordovaBeacon_;
         $q = _$q_;
     
         Beacons = _AnimistBeacons_;
+        Core = _AnimistBluetoothCore_;
+        Auto = _AnimistBluetoothAuto_;
         debug = $cordovaBeacon;
-        AnimistBLE = _AnimistBLE_; 
 
     }));
 
@@ -120,16 +122,16 @@ describe('AnimistBeacons Service', function () {
             $scope.$digest();
             
         })
-        it('should call AnimistBLE.listen w/ beacon id & proximity', function(){
+        it('should call BluetoothAuto.listen w/ beacon id & proximity', function(){
 
             var expected_uuid = 'AAAAAAA';
             var expected_proximity = 'proximityNear';
 
-            spyOn(AnimistBLE, 'listen').and.callThrough();
+            spyOn(Auto, 'listen').and.callThrough();
             $scope.$broadcast('$cordovaBeacon:didRangeBeaconsInRegion', mock_beacons);
             
             $scope.$digest();
-            expect(AnimistBLE.listen).toHaveBeenCalledWith(expected_uuid, expected_proximity);
+            expect(Auto.listen).toHaveBeenCalledWith(expected_uuid, expected_proximity);
         })
 
     });
@@ -147,16 +149,16 @@ describe('AnimistBeacons Service', function () {
             
         })
 
-        it('should reset the AnimistBLE connection', function(){
+        it('should reset the BluetoothCore connection', function(){
             var expected_pkg = {
                 transmitter: 'AAAAAAA',
                 receiver: 'ZZZZZZZZ'
             }
 
-            spyOn(AnimistBLE, 'reset');
+            spyOn(Core, 'reset');
             $scope.$broadcast('$cordovaBeacon:didExitRegion', mock_beacons);
             $scope.$digest();
-            expect(AnimistBLE.reset).toHaveBeenCalled();
+            expect(Core.reset).toHaveBeenCalled();
         });
 
     });

@@ -3,6 +3,7 @@ angular.module('animist').service("AnimistBluetoothCore", AnimistBluetoothCore);
 function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConstants ){
 
     var self = this;
+    var codes = AnimistConstants.serverHexCodes;
 
     // ------------------------------ Public Vars --------------------------------------
     
@@ -12,6 +13,12 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
      */
     self.peripheral = {};
 
+    /**
+     * Proximity string value passed to service by iOS CoreBluetooth.
+     * Approximates distance of mobile client from IoT node based on beacon signal strength.
+     * @var {Object} peripheral
+     */
+    self.proximity;
     
     /**
      * State values that can be tested against in AnimistBluetoothAuto.listen() loop,
@@ -57,7 +64,7 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
     
     // Initial state
     self.state = self.stateMap.NOT_INITIALIZED;
-    
+
     /**
      * Hardware inits. Must succeed before AnimistBluetoothAuto or AnimistBluetooth core
      * methods can be called. 

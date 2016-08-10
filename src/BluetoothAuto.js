@@ -28,7 +28,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
 
     //  ***** NOT SURE WHERE TO PUT THIS *****
     // $on('Animist:receivedTx'): Responds to a successful tx retrieval. Event is 
-    // fired from subscribeGetContract. Checks proximity req and passes to sendTx for processing if  
+    // fired from subscribeGetContract. Checks proximity req and passes to autoSendTx for processing if  
     // ok OR closes the the connection to conserve resources and allow other clients to connect 
     // to the endpoint. 
     $rootScope.$on(events.receivedTx, function(){
@@ -36,7 +36,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
         if (core.peripheral.tx){
             
             proximityMatch(core.peripheral.tx) ? 
-                self.sendTx(core.peripheral.tx, customSignMethod ) : 
+                self.autoSendTx(core.peripheral.tx, customSignMethod ) : 
                 core.close();
 
         // A failsafe that doesn't get called in the current code (someone might call it someday). 
@@ -50,10 +50,9 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
     // ------------------------------ Utilities --------------------------------------
 
     
-
     // proximityMatch(): Is current proximity nearer or equal to required proximity?
     function proximityMatch(tx){
-        return ( tx && (proximityWeights[self.proximity] >= proximityWeights[tx.proximity]) );
+        return ( tx && (proximityWeights[core.proximity] >= proximityWeights[tx.proximity]) );
     }
 
     // wasConnected(): Have we already generated a peripheral object during a recent connection?
@@ -96,21 +95,12 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
     // -------------------------------------------------------------------------
     // ------------------------------- Public ----------------------------------
     // -------------------------------------------------------------------------
-    
-    // Current proximity passed to us by AnimistBeacon via listen()
-    self.proximity;        
- 
+     
     // setCustomSignMethod(fn):
     //
-    // fn(tx) should accept a single tx object as a param: { code: '90909...', expires: '...', etc...} 
-    // and return a promise that resolves a string representing the signed code. This allows the app to pass
-    // the tx off the device for remote signing and return it for local submission. Keep in mind
-    // that background run times on iOS can be capped at ~7 seconds if the app is actively
-    // backgrounded on the device. (They are closer to 90 sec if the app gets launched from
-    // death.) You can approximate your position in this time window by keeping track of the first 
-    // "Animist:initiatedBLEConnection" event and comparing it with present time. Rejecting from this
-    // method will endSession() e.g. client will not reconnect to peripheral while it is in the
-    // current beacon region unless you explicitly call AnimistBLE.reset();
+    // The custom signing method should accept a single tx object as a param: { code: '90909...', etc...} 
+    // and return a promise that resolves a raw transaction string. This facility allows the app to pass
+    // the tx off the device for remote signing and return it for local submission. 
     self.setCustomSignMethod = function( fn ){
         customSignMethod = fn;
     }
@@ -145,7 +135,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
             default:
 
                 core.state = map.TRANSACTING;
-                self.proximity = proximity;
+                core.proximity = proximity;
 
                 self.openLink(beaconId).then( null, function(fail){
                         
@@ -158,7 +148,6 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
                     }     
                 });
                 return core.state;
-
         }
     }
 
@@ -173,7 +162,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
     // d) does nothing if client has tx but still hasn't met a proximity requirement.
     self.openLink = function( beaconId ){
 
-        var where = 'AnimistBLE:openLink: ';
+        var where = 'AnimistBluetoothAuto:openLink: ';
         var uuid = endpointMap[beaconId];
         
         // Case: First peripheral connection or session timed-out. Query endpoint
@@ -205,7 +194,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
         } else if (proximityMatch(core.peripheral.tx )) {
 
             return core.connect(core.peripheral.address)
-                .then(function(){   return $q.when( self.sendTx(core.peripheral.tx, customSignMethod )) })
+                .then(function(){ return $q.when( self.autoSendTx(core.peripheral.tx, customSignMethod )) })
                 .catch(function(e){ return $q.reject(e)})
            
         
@@ -216,7 +205,7 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
         }   
     }
 
-    // sendTx(): Called by $on("Animist:receivedTx") or openLink();
+    // autoSendTx(): Called by $on("Animist:receivedTx") or openLink();
     // 
     // a) writes signed tx to endpoint if user is authorized to do so, OR
     // b) writes a request to confirm users presence at this loc. if a remote authority 
@@ -225,12 +214,12 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
     //
     // Ends session on success & unauthorizedTx, resets on technical failure.
     // Broadcasts message specific to each of the above, including error.
-    self.sendTx = function(tx, txMethod){
+    self.autoSendTx = function(tx, txMethod){
         
         var out = {};
 
         // Case: User can sign their own tx. Write tx & wait for response.
-        // Broadcasts txHash of the sendTx or error
+        // Broadcasts txHash of the autoSendTx or error
         if (tx.authority === user.address ) {
 
             out.tx = user.generateTx(tx.code, tx.state);

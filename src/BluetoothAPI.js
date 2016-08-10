@@ -1,10 +1,12 @@
 angular.module('animist').service("AnimistBluetoothAPI", AnimistBluetoothAPI);
 
-function AnimistBluetoothAPI($q, AnimistAccount, AnimistConstants, AnimistBluetoothCore ){
+function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, AnimistBluetoothCore ){
 
+    var self = this;
     var UUID = AnimistConstants.serverCharacteristicUUIDs;
+    var events = AnimistConstants.events;
     var user = AnimistAccount;
-    var core = AnimistCore;
+    var core = AnimistBluetoothCore;
 
     // ------------------------------ Public (non-pin) Server Endpoints  ----------------------------
      
@@ -159,6 +161,14 @@ function AnimistBluetoothAPI($q, AnimistAccount, AnimistConstants, AnimistBlueto
         return d.promise;
     }
 
+    /**
+     * Retrieves contract code from animist device. This will be available if the contract
+     * broadcast an event to the node when it was deployed, specifying the callers account
+     * as a contract participant. Because   
+     * @method  getContract 
+     * @return {Promise} Resolves object: {code: '0xa34..f', sessionId: 'a4tf..x', expires: '1543..0'} OR null
+     * @return {Promise} Rejects with error object.
+     */
     self.getContract = function(){
 
         var d = $q.defer();
@@ -168,7 +178,7 @@ function AnimistBluetoothAPI($q, AnimistAccount, AnimistConstants, AnimistBlueto
             pin = user.sign(pin);
             core.writeWithLongResponse(pin, UUID.getContract)
                 .then(function(res){ 
-                    core.peripheral.tx = msg;
+                    core.peripheral.tx = res;
                     $rootScope.$broadcast( events.receivedTx );
                     d.resolve(res) 
                 })

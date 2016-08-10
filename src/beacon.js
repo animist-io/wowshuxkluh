@@ -1,17 +1,15 @@
-// @service: Beacons
-// Handlers for initializing, transmitting and receiving of beacon signals
-//(function(){
-
 "use strict"
 
 angular.module('animist')
   .service("AnimistBeacons", AnimistBeacons);
 
-    function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBLE ){
+    function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBluetoothCore, AnimistBluetoothAuto ){
 
         var self = this;
         var lock = false;
         var regions = [];
+        var core = AnimistBluetoothCore;
+        var auto = AnimistBluetoothAuto;
 
         // The set of uuids to monitor for
         var uuids = [
@@ -96,7 +94,7 @@ angular.module('animist')
             
             if (beacon){
 
-                AnimistBLE.reset();
+                core.reset();
                 //Meteor.call('disconnect', pkg);
 
             } else {
@@ -118,19 +116,16 @@ angular.module('animist')
             var where = "AnimistBeacons:onCapture";
             var scan_result, transmitter, proximity, beacon;
 
+            // THIS IS GIBBERISH
             if (beacons.length && !lock ){
 
                 lock = true;
                 
                 angular.forEach(beacons, function(beacon){
 
-                    AnimistBLE.listen(beacon.uuid, beacon.proximity).then(
-                        function(success){lock = false; logger(where, success)},
-                        function(error){lock = false; logger(where, error)}
-                    );
+                    auto.listen(beacon.uuid, beacon.proximity);
+                    lock = false;
                 })
             };
         };
     };
-
-//})()

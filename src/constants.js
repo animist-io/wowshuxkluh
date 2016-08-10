@@ -2,7 +2,6 @@ angular.module('animist').service("AnimistConstants", AnimistConstants);
 
 function AnimistConstants(){
 
-    var self = this;
     this.events = {
 
         initiatedBLE: 'Animist:initiatedBLEConnection',

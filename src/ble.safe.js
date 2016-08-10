@@ -373,107 +373,6 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         }
     };
 
-    // -------------------- Public (non-pin) Server Endpoints  ----------------------------
-    
-    // getPin: Reads the value of the pin characteristic. This updates constantly on the 
-    // endpoint side and is used to verify that mobile client is present 'in time'. This
-    // pin will get signed by the user and returned to endpoint for transaction search and
-    // auth requests. 
-    
-    /**
-     * Reads the value of the pin characteristic. This updates every ~30sec and a client
-     * signed copy of it is required to access some of the server's endpoints. It's used 
-     * to help verify client is present 'in time'.
-     * @method  getPin 
-     * @return {String} 32 character alpha-numeric pin
-     */
-    self.getPin = function(){ 
-        return self.read(UUID.getPin)
-            .then( function(res){ return self.peripheral.pin = res })
-            .catch( function(err){ return $q.reject(err) });
-    }
-
-    /**
-     * Gets Animist node's public account address (and caches it in self.peripheral). 
-     * This address identifies the node in IPFS and is the account used to execute Animist 
-     * contract API methods on client's behalf. 
-     * @method  getDeviceAccount
-     * @return {String} Hex prefixed address string
-     */
-    self.getDeviceAccount = function(){
-        return self.read(UUID.getDeviceAccount)
-            .then( function(res){ return self.peripheral.deviceAccount = res })
-            .catch( function(err){ return $q.reject(err) });
-    }
-
-    /**
-     * Gets current blockNumber (and caches it in self.peripheral). 
-     * @return {Number} web3.eth.blockNumber
-     */
-    self.getBlockNumber = function(){
-        return self.read(UUID.getBlockNumber)
-            .then( function(res){ return self.peripheral.blockNumber = parseInt(res) })
-            .catch( function(err){ return $q.reject(err) });
-    } 
-
-    /**
-     * Gets small subset of web3 data about a transaction. Useful for determining if 
-     * a transaction has been mined yet. (blockNumber will be null if tx is pending.) 
-     * @method  getTxStatus 
-     * @param  {String} txHash : hex prefixed transaction hash.
-     * @return {Object} { blockNumber: "150..1", nonce: "77", gas: "314..3" }
-     * @return {String} 'null'
-     */
-    self.getTxStatus = function(txHash){
-        return self.write(txHash, UUID.getTxStatus)
-            .then( function(res){ return res })
-            .catch( function(err){ return $q.reject(err) });
-    }
-
-    /**
-     * @method  getAccountBalance 
-     * @param  {String} address : hex prefixed account address
-     * @return {BigNumber} TO DO . . . . ethereumjs-util. . . .
-     */
-    self.getAccountBalance = function(address){
-        return self.write(address, UUID.getAccountBalance)
-            .then( function(res){ return res })
-            .catch( function(err){ return $q.reject(err) });
-    }
-
-    /**
-     * Equivalent to making a web.eth.call for unsigned public constant methods.
-     * Useful for retrieving data from a contract 'synchronously'.
-     * @method  callTx 
-     * @param  {Object} tx {to: '0x929...ae', code: '0xae45...af'}
-     * @return {Value} web3.eth.call(tx)
-     */
-    self.callTx = function(tx){
-        return self.write(tx, UUID.callTx)
-            .then( function(res){ return res })
-            .catch( function(err){ return $q.reject(err) });
-    }
-
-    // -------------------- PIN-Access Server Endpoints  --------------------------------
-    
-    self.getNewSessionId = function(){
-
-        var d = $q.defer();
-        
-        self.getPin().then(function(pin){
-            self.write(pin, UUID.getNewSessionId)
-                .then(function(res){ d.resolve(res) })
-                .catch(function(err){ d.reject(err) })
-
-        }).catch(function(err){ d.reject(err)})
-
-        return d.promise;
-    }
-
-    self.getPresenceReceipt = function(){}
-    self.getVerifiedTxHash = function(){}
-
-
 
     // ------------------------- receivedTX Event  -----------------------------------
 
@@ -659,7 +558,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
                     req.value = out;
                     $cordovaBluetoothLE.write(req).then(
                         function(success){}, 
-                        function(error){ d.reject({where: where, error: error})}
+                        function(error){ d.reject({where: where, error: parseCode(error) })}
                     );
 
                 // Notification handler: resolves txHash
@@ -705,7 +604,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
 
                     $cordovaBluetoothLE.write(req).then(
                         function(success){}, 
-                        function(error){d.reject({where: where, error: parseCode(error)})}
+                        function(error){d.reject({where: where, error: parseCode(error) })}
                     );
 
                 // Notification handler: Assembles tx transmission and
@@ -747,7 +646,7 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
         // Decode response and update pin value
         return $cordovaBluetoothLE.read( req )
             .then(function(res){  return decode(res.value) }) 
-            .catch(function(err){ return $q.reject( {where: where, error: err} )})   
+            .catch(function(err){ return $q.reject( { where: where, error: parseCode(err) } )})   
     }
 
     
@@ -759,3 +658,5 @@ function AnimistBLE($rootScope, $q, $cordovaBluetoothLE, AnimistAccount, Animist
     }
 
 };
+
+//})();

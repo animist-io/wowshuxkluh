@@ -20,7 +20,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.getPin = function(){ 
         return core.read(UUID.getPin)
-            .then( function(res){ return core.peripheral.pin = res })
+            .then( function(res){ return core.peripheral.pin = JSON.parse(res) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -66,12 +66,12 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
     /**
      * @method  getAccountBalance 
      * @param  {String} address : hex prefixed account address
-     * @return {Promise} Resolves BigNumber TO DO . . . . ethereumjs-util. . . .
+     * @return {Promise} Resolves BigNumber
      * @return {Promise} Rejects with error object
      */
     self.getAccountBalance = function(address){
         return core.write(address, UUID.getAccountBalance)
-            .then( function(res){ return res })
+            .then( function(res){ return new BigNumber(res) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -79,7 +79,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      * Equivalent to making a web.eth.call for unsigned public constant methods.
      * Useful for retrieving data from a contract 'synchronously'.
      * @method  callTx 
-     * @param  {Object} tx {to: '0x929...ae', code: '0xae45...af'}
+     * @param  {Object} tx {to: '0x929...ae', data: '0xae45...af'}
      * @return {Promise} Resolves string: result of web3.eth.call(tx). ('0x' on fail)
      * @return {Promise} Rejects with error object
      */
@@ -232,5 +232,4 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
 
         return d.promise;
     }
-
 }

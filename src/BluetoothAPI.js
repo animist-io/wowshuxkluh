@@ -1,3 +1,5 @@
+var api_debug;
+
 angular.module('animist').service("AnimistBluetoothAPI", AnimistBluetoothAPI);
 
 function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, AnimistBluetoothCore ){
@@ -34,7 +36,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.getDeviceAccount = function(){
         return core.read(UUID.getDeviceAccount)
-            .then( function(res){ return core.peripheral.deviceAccount = res })
+            .then( function(res){ return core.peripheral.deviceAccount = JSON.parse(res) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -45,7 +47,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.getBlockNumber = function(){
         return core.read(UUID.getBlockNumber)
-            .then( function(res){ return core.peripheral.blockNumber = parseInt(res) })
+            .then( function(res){ return core.peripheral.blockNumber = parseInt(JSON.parse(res)) })
             .catch( function(err){ return $q.reject(err) });
     } 
 
@@ -59,7 +61,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.getTxStatus = function(txHash){
         return core.write(txHash, UUID.getTxStatus)
-            .then( function(res){ return res })
+            .then( function(res){ return JSON.parse(res) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -71,7 +73,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.getAccountBalance = function(address){
         return core.write(address, UUID.getAccountBalance)
-            .then( function(res){ return new BigNumber(res) })
+            .then( function(res){ return new ethUtil.BN(JSON.parse(res)) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -85,7 +87,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.callTx = function(tx){
         return core.write(tx, UUID.callTx)
-            .then( function(res){ return res })
+            .then( function(res){ return JSON.parse(res) })
             .catch( function(err){ return $q.reject(err) });
     }
 
@@ -104,7 +106,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
         self.getPin().then(function(pin){
             pin = user.sign(pin);
             core.write(pin, UUID.getNewSessionId)
-                .then(function(res){ d.resolve(res) })
+                .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
         }).catch(function(err){ d.reject(err)})
@@ -129,7 +131,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
         self.getPin().then(function(pin){
             pin = user.sign(pin);
             core.write(pin, UUID.getPresenceReceipt)
-                .then(function(res){ d.resolve(res) })
+                .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
         }).catch(function(err){ d.reject(err)})
@@ -153,7 +155,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
         self.getPin().then(function(pin){
             pin = user.sign(pin);
             core.write(pin, UUID.getVerifiedTxHash)
-                .then(function(res){ d.resolve(res) })
+                .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
         }).catch(function(err){ d.reject(err)})
@@ -178,9 +180,9 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
             pin = user.sign(pin);
             core.writeWithLongResponse(pin, UUID.getContract)
                 .then(function(res){ 
-                    core.peripheral.tx = res;
+                    core.peripheral.tx = JSON.parse(res);
                     $rootScope.$broadcast( events.receivedTx );
-                    d.resolve(res) 
+                    d.resolve(JSON.parse(res) ) 
                 })
                 .catch(function(err){ d.reject(err) })
 
@@ -202,7 +204,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
         self.getPin().then(function(pin){
             pin = user.sign(pin);
             core.write(pin, UUID.authTx)
-                .then(function(res){ d.resolve(res) })
+                .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
         }).catch(function(err){ d.reject(err)})
@@ -225,7 +227,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
         self.getPin().then(function(pin){
             pin = user.sign(pin);
             core.write({pin: pin, tx: rawTx}, UUID.authAndSendTx)
-                .then(function(res){ d.resolve(res) })
+                .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
         }).catch(function(err){ d.reject(err)})

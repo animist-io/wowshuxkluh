@@ -194,7 +194,7 @@ describe('AnimistBluetoothAuto', function(){
 
          expect(Core.peripheral.address).toEqual(ble_address);
          expect(Core.peripheral.service).toEqual(service_uuid);
-         expect(Core.peripheral.tx).toEqual($ble.mockGetContractResult);
+         expect(Core.peripheral.tx).toEqual($ble.mockGetContract);
          expect(Core.peripheral.pin).toEqual(pin);
 
       });
@@ -432,9 +432,7 @@ describe('AnimistBluetoothAuto', function(){
          var expected_error = { 
             error : { 
                where : 'AnimistBluetoothCore:write: ' + uuids.sendTx, 
-               error : { 
-                  error : 'failed' 
-               } 
+               error : 0x01 
             }
          }
 
@@ -544,9 +542,7 @@ describe('AnimistBluetoothAuto', function(){
          var expected_error = { 
             error : { 
                where : 'AnimistBluetoothCore:write: ' + uuids.sendTx, 
-               error : { 
-                  error : 'failed' 
-               } 
+               error : 0x01
             }
          }
 
@@ -612,9 +608,7 @@ describe('AnimistBluetoothAuto', function(){
          var expected_error = { 
             error : { 
                where : 'AnimistBluetoothCore:write: ' + uuids.authTx, 
-               error : { 
-                  error : 'failed' 
-               } 
+               error : 0x01
             }
          }
 

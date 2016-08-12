@@ -49,8 +49,8 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
         return $cordovaBluetoothLE.bytesToString(msg);
     };
 
-    // parseCode(): Reverse map hex error codes received from endpoint on write response
-    // to human-readable strings (See var codes at top).
+    // parseCode(): Reverse map hex error codes received from endpoint 
+    // to human-readable strings (See AnimistConstants serverHexCodes at top).
     function parseCode(hex){
         for( var prop in codes) {
             if( codes.hasOwnProperty( prop ) ) {
@@ -215,11 +215,6 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
         );
     };
 
-    // reset(): Called in the exit_region callback of AnimistBeacon OR when a 
-    // sessionId times out, or on connection error - resets all the state variables 
-    // and enables a virgin connection. BLE remains initialized. OK if address DNE -
-    // $BluetoothLE will handle that.
-    
     /**
      * Closes server connection and sets core state to 'initialized', while wiping
      * core peripheral object. Called in the exit_region callback of AnimistBeacon (i.e
@@ -247,9 +242,10 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
      * @return {Promise} Rejects with error object
      */
     self.read = function(dest){
-
-        var where = 'AnimistBluetoothCore:read: ' + dest;
         
+        var where = 'AnimistBluetoothCore:read: ' + dest;
+        var d = $q.defer();
+
         // Compose subscribe req to characteristic
         var req = {
             address: self.peripheral.address,
@@ -259,9 +255,11 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
         }; 
 
         // Decode response and update pin value
-        return $cordovaBluetoothLE.read( req )
-            .then(function(res){  return decode(res.value) }) 
-            .catch(function(err){ return $q.reject( { where: where, error: parseCode(err) } )})   
+        $cordovaBluetoothLE.read( req )
+            .then(function(res){  d.resolve( decode(res.value) ) }) 
+            .catch(function(err){ d.reject( { where: where, error: parseCode(err) } )}) 
+
+        return d.promise;  
     }
 
     /**
@@ -316,9 +314,9 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
     };
 
     /**
-     * Subscribes to characteristic, writes query or message to Animist node ("out") and resolves the response.
-     * (This method used when the expected return data length exceeds maximum packet sizes. It waits until an EOF 
-     * signal to resolve).
+     * Subscribes to characteristic, writes message to Animist node and resolves the response.
+     * (This method used when the expected return data length exceeds maximum packet sizes. 
+     * It waits until response is "EOF" to resolve).
      * @method  write
      * @param  {(String|Object)} out : the query or message to encode and send
      * @param  {String} dest : characteristic uuid of server endpoint

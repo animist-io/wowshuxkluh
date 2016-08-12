@@ -73,7 +73,7 @@ angular.module('animist')
             return d;
         };
 
-        // ------------------------  Private ---------------------------------
+
         // setUpRegions(): initialize an array beaconRegion obj of all our possible uuid vals
         function setUpRegions(){
             for (var i = 0; i < uuids.length; i++){
@@ -87,20 +87,13 @@ angular.module('animist')
          * @method onExit
          * @param { Object } A beacon object which specifies the region uuid but not major/minor.
         */
-
         function onExit(result){
 
-            var beacon = result.region;
+            (result.region) 
+                ? core.reset()
+                : null;
             
-            if (beacon){
-
-                core.reset();
-                //Meteor.call('disconnect', pkg);
-
-            } else {
-                //MSLog("@beacon:disconnect. Error: receiver - " + receiver);
-            }
-           
+            //Meteor.call('disconnect', pkg);
         };
 
         /** 
@@ -122,10 +115,9 @@ angular.module('animist')
                 lock = true;
                 
                 angular.forEach(beacons, function(beacon){
-
                     auto.listen(beacon.uuid, beacon.proximity);
                     lock = false;
-                })
+                });
             };
         };
     };

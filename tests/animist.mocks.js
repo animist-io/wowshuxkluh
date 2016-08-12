@@ -82,12 +82,14 @@ angular.module('animistMocks', [])
         self.mockBlockNumber = 2247;
         self.mockAddress = '0x407d73d8a49eeb85d32cf465507dd71d507100c1';
         self.mockTxStatus =  {"blockNumber": 3,"gasUsed": 30234};
+        
         self.mockSessionData = {"sessionId": "1q2w3e4r5t", "expires": 1234567890 };
         self.mockTxHash = "0x9fc76417374aa880d4449a1f7f31ec597f00b1f6f3dd2d66f4c9c6c445836d8b";
         self.mockAccountBalance = '3.33024461631390638913600059538215531811694532e+44';
         self.mockCallResult = "0x0000000000000000000000000000000000000000000000000000000000000015";
         self.mockCall = [self.mockAddress, self.mockData];
         self.mockAuthAndSend = {pin: self.mockPin, tx: self.mockSignedTx};
+        self.mockVerifiedTxStatus = { authStatus: "success", authTxHash: self.mockTxHash, verifiedTxHash: self.mockTxHash }; 
         self.mockSignedMessage = '0xaaaaaaaaaaa';
         self.mockPresenceReceipt = {
             time: 1470937203535,
@@ -113,6 +115,7 @@ angular.module('animistMocks', [])
         var accountBalanceRaw = self.encodeMock(JSON.stringify(self.mockAccountBalance));
         var callResultRaw = self.encodeMock(JSON.stringify(self.mockCallResult));
         var presenceReceiptRaw = self.encodeMock(JSON.stringify(self.mockPresenceReceipt));
+        var verifiedTxStatusRaw = self.encodeMock(JSON.stringify(self.mockVerifiedTxStatus));
         
         var getContractRaw = [
             {status: 'subscribed', value: 0},
@@ -156,6 +159,11 @@ angular.module('animistMocks', [])
         var presenceReceiptRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockPresenceReceipt))}
+        ];
+
+        var verifiedTxStatusRaw = [
+            {status: 'subscribed', value: 0},
+            {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockVerifiedTxStatus))}
         ];
 
         // ------------------
@@ -285,6 +293,11 @@ angular.module('animistMocks', [])
                     defer.notify(presenceReceiptRaw[0]);
                     defer.notify(presenceReceiptRaw[1]);
                 },0); 
+            } else if (self.emulateGetVerifiedTxStatus){
+                $timeout(function(){ 
+                    defer.notify(verifiedTxStatusRaw[0]);
+                    defer.notify(verifiedTxStatusRaw[1]);
+                },0);
             } else if (self.emulateTxHash){
 
                 $timeout(function(){ 

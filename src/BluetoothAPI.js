@@ -144,17 +144,17 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      * Hash is available once the authTx has been mined and caller's transaction has been 
      * published to chain. Also returns authStatus data which may be 'pending' or 'failed' 
      * if authTx is unmined or ran out of gas.
-     * @method getVerifiedTxHash 
+     * @method getVerifiedTxStatus 
      * @return {Promise} Resolves object {authStatus: "success", authTxHash: "0x7d..3", verifiedTxHash: "0x32..e" } OR null.
      * @return {Promise} Rejects with error object
      */
-    self.getVerifiedTxHash = function(){
+    self.getVerifiedTxStatus = function(){
 
         var d = $q.defer();
         
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write(pin, UUID.getVerifiedTxHash)
+            core.write(pin, UUID.getVerifiedTxStatus)
                 .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 

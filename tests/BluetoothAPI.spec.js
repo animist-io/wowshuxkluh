@@ -264,29 +264,29 @@ describe('AnimistBluetoothAPI', function(){
         });
     });
 
-    describe('getVerifiedTxHash', function(){
+    describe('getVerifiedTxStatus', function(){
 
-        it('should subscribe to the getVerifiedTxHash uuid', function(){
+        it('should subscribe to the getVerifiedTxStatus uuid', function(){
             spyOn(Core, 'write').and.callThrough();
-            API.getVerifiedTxHash();
+            API.getVerifiedTxStatus();
             $scope.$digest();
-            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuids.getVerifiedTxHash);
+            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuids.getVerifiedTxStatus);
         });
 
         it('should resolve a transaction hash string on success', function(){
             spyOn(Core, 'write').and.callThrough();
-            $ble.emulateTxHash = true;
-            promise = API.getVerifiedTxHash();
+            $ble.emulateGetVerifiedTxStatus = true;
+            promise = API.getVerifiedTxStatus();
             $timeout.flush();
             expect(promise.$$state.status).toEqual(1);
-            expect(promise.$$state.value).toEqual($ble.mockTxHash);
+            expect(promise.$$state.value).toEqual($ble.mockVerifiedTxStatus);
         });
 
         it('should reject with error object on failure', function(){
             spyOn(Core, 'write').and.callThrough();
             $ble.throwsSubscribe = true;
-            error = { where : 'AnimistBluetoothCore:write: ' + uuids.getVerifiedTxHash, error : 0x01 };
-            promise = API.getVerifiedTxHash();
+            error = { where : 'AnimistBluetoothCore:write: ' + uuids.getVerifiedTxStatus, error : 0x01 };
+            promise = API.getVerifiedTxStatus();
             $scope.$digest();
             expect(promise.$$state.status).toEqual(2);
             expect(promise.$$state.value).toEqual(error);

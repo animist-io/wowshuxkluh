@@ -1,8 +1,6 @@
 "use strict"
 
-var acc_debug;
-angular.module('animist')
-  .service("AnimistAccount", AnimistAccount);
+angular.module('animist').service("AnimistAccount", AnimistAccount);
 
 function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 
@@ -278,6 +276,15 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
         return d.promise;  
     };
 
+    self.sign = function( msg ){
+        return wallet.signing.signMsg( keystore, key, msg, address); 
+    };
+
+    // Returns Hex address
+    self.recover = function(raw){
+        return wallet.signing.recover( raw, signed.v, signed.r, signed.s);
+    }
+
     // 
     self.saveContract = function(key, val){ };
     self.getContract = function(key){};
@@ -326,15 +333,6 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
     self.printKeystore = function(){ console.log(keystore.serialize())};
     self.printKey = function(){console.log(key)};
     
-    self.sign = function( msg ){
-        return wallet.signing.signMsg( keystore, key, msg, address); 
-    };
-
-    // Returns Hex address
-    self.recover = function(raw){
-        return wallet.signing.recover( raw, signed.v, signed.r, signed.s);
-    }
-
     self.generateTx = function(code, state){
 
         var contractData, txOptions, fn;

@@ -165,8 +165,8 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
 
     /**
      * Retrieves contract code from animist device. This will be available if the contract
-     * broadcast an event to the node when it was deployed, specifying the callers account
-     * as a contract participant. Because   
+     * broadcast an event to the node when it was deployed (or afterwards), specifying the callers account
+     * as a contract participant. 
      * @method  getContract 
      * @return {Promise} Resolves object: {code: '0xa34..f', sessionId: 'a4tf..x', expires: '1543..0'} OR null
      * @return {Promise} Rejects with error object.
@@ -214,7 +214,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
 
     /**
      * Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
-     * method with the device account. Waits for auth to be mined and sends clients raw transaction. 
+     * method with the device account. Waits for auth to be mined and sends client's raw transaction. 
      * This method provides a way of authenticating and sending a transaction in a single step.        
      * @method  authAndSendTx 
      * @param  {String} rawTx : transaction signed by the user. 

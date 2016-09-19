@@ -24,6 +24,7 @@ module.exports = function(config) {
          "bower_components/ngCordova/dist/ng-cordova-mocks.js",
          "node_modules/eth-lightwallet/dist/lightwallet.min.js",
          "lib/bundle.js",
+         //"npm_assets.js",
 
       
          "src/animist.js",

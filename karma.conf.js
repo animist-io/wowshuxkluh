@@ -29,7 +29,6 @@ module.exports = function(config) {
          "src/animist.js",
          "src/accounts.js",
          "src/beacon.js",
-         //"src/ble.js",
          "src/constants.js",
          "src/BluetoothAPI.js",
          "src/BluetoothAuto.js",

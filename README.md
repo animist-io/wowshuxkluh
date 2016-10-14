@@ -2,9 +2,9 @@
 
 [![Build Status](https://travis-ci.org/animist-io/wowshuxkluh.svg?branch=master)](https://travis-ci.org/animist-io/wowshuxkluh) **Warning: under construction.** 
 
-Wowshuxkluh will be an an Angular 1.x library for Ionic that lets mobile devices automatically (or intentionally) connect to Ethereum microcomputer clients over BluetoothLE and write transactions to the blockchain about their location. The project's goal is to:
+Wowshuxkluh will be an an Angular 1.x library for Ionic that lets mobile devices automatically (or intentionally) connect to Ethereum microcomputer clients over BluetoothLE. The project's goal is to:
 + Make proximity detection events transactionally available to smart-contracts in a way that provides a minimally competent location oracle for mobile. 
-+ Provide an interface that lets mobile Dapps interact with [animist-io/whale-island](https://github.com/animist-io/whale-island) to deploy contracts and execute transactions securely.   
++ Provide an interface that lets mobile Dapps interact with [animist-io/whale-island](https://github.com/animist-io/whale-island) to deploy contracts and execute transactions over Bluetooth securely.   
 
 Use cases for such a system include:
 + Competitive races 

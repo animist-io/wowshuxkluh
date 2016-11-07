@@ -16,11 +16,12 @@
     "karma-ng-html2js-preprocessor": "^1.0.0"
   },
   "devDependencies": {
-    "eth-lightwallet": "2.3.3",
+    "ethereumjs-util": "^4.5.0",
     "gulp-connect": "^5.0.0",
     "gulp-ngdocs": "^0.3.0"
   },
   "scripts": {
+    "build-eth": "browserify ethjs_assets.js -o lib/ethereumjs.js --s ethereumjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

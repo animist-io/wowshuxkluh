@@ -269,7 +269,8 @@ describe('AnimistAccount Service', function(){
                expect(AnimistAccount.initialized).toBe(true);
 
             })
-            .catch( function(){
+            .catch( function(err){
+               console.log(err);
                expect(true).toEqual('Shouldnt reject');
             })
             .finally(function(){
@@ -338,7 +339,8 @@ describe('AnimistAccount Service', function(){
                   account = AnimistAccount.getCurrentAccount();
                   expect(account).toEqual(record.val);
                })
-               .catch(function(){
+               .catch(function(err){
+                  console.log(err);
                   expect(true).toEqual('Shouldnt reject db.get');
                })
                .finally(function(){

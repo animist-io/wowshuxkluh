@@ -1,6 +1,7 @@
-var window_debug = window;
+var debug = window;
 
 describe('AnimistBluetoothAPI', function(){
+
 
     beforeEach(module('animist'));       // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
@@ -8,6 +9,9 @@ describe('AnimistBluetoothAPI', function(){
 
     var $scope, $q, $ble, uuids, Auto, Core, API, Beacons, AnimistAccount, $timeout, 
         promise, error;
+
+    var ethUtil = ethereumjs.util;
+
 
     beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBluetoothLE_, _$timeout_, 
                               _AnimistBluetoothCore_, _AnimistBluetoothAuto_, _AnimistBluetoothAPI_, 
@@ -157,14 +161,14 @@ describe('AnimistBluetoothAPI', function(){
             expect(Core.write).toHaveBeenCalledWith($ble.mockAddress, uuids.getAccountBalance);
         });
 
-        /*it('should resolve a BigNumber object on success', function(){
+        it('should resolve a BigNumber object on success', function(){
             spyOn(Core, 'write').and.callThrough();
             $ble.emulateGetAccountBalance = true;
             promise = API.getAccountBalance($ble.mockAddress);
             $timeout.flush();
             expect(promise.$$state.status).toEqual(1);
             expect(promise.$$state.value).toEqual(new ethUtil.BN($ble.mockAccountBalance));
-        });*/
+        });
 
         it('should reject with error object on failure', function(){
             spyOn(Core, 'write').and.callThrough();

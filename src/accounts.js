@@ -108,45 +108,46 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 				if (!self.installed ){
 					
 					// Keystore setup
-					seed = wallet.keystore.generateRandomSeed();
-					wallet.keystore.deriveKeyFromPassword(password, function(err, derivedKey) {
+					//seed = wallet.keystore.generateRandomSeed();
+					wallet.keystore.createVault({ password: password }, function(err, ks){
+						keystore = ks;
+						ks.keyFromPassword(password, function(err, derivedKey) {
 
-						if (err){ 
-							d.reject(err);
-						} else {
-											
-							// Generate keystore object
-							keystore = new wallet.keystore( seed, derivedKey);
-							keystore.generateNewAddress(derivedKey, 1);
-							address = keystore.getAddresses()[0];
-							key = derivedKey;
-							
-							// Open DB and prep docs
-							db = new PouchDB(names.DB, {adapter: "websql"});
-							ksDoc = { '_id': names.DB_KEYSTORE, 'val': keystore.serialize() };
-							addrDoc = {'_id': names.DB_ADDRESS, 'val': address };
-							
-							// Save password to keychain. Save keystore and current address to DB. 
-							$q.all( [ keychain.setForKey(names.KEY_USER, names.KEY_SERVICE, password),
-									  $q.when(db.put(ksDoc)),
-									  $q.when(db.put(addrDoc))])
-							
-							.then( function(success){ 
-								self.installed = true; 
-								self.initialized = true;
-								d.resolve()
-							})
+							if (err){ 
+								d.reject(err);
+							} else {
+												
+								ks.generateNewAddress(derivedKey, 1);
+								address = ks.getAddresses()[0];
+								key = derivedKey;
+			
+								// Open DB and prep docs
+								db = new PouchDB(names.DB, {adapter: "websql"});
+								ksDoc = { '_id': names.DB_KEYSTORE, 'val': ks.serialize() };
+								addrDoc = {'_id': names.DB_ADDRESS, 'val': address };
+					
+								// Save password to keychain. Save keystore and current address to DB. 
+								$q.all( [ keychain.setForKey(names.KEY_USER, names.KEY_SERVICE, password),
+										  $q.when(db.put(ksDoc)),
+										  $q.when(db.put(addrDoc))])
+								
+								.then( function(success){ 
+									self.installed = true; 
+									self.initialized = true;
+									d.resolve()
+								})
 
-							// Wipe all saved data if there was an error in sequence above.
-							.catch(function( error ){ 
-								reset().then(function(){ d.reject(error)}) 
-							})
+								// Wipe all saved data if there was an error in sequence above.
+								.catch(function( error ){ 
+									reset().then(function(){ d.reject(error)}) 
+								})
 
-							// Tell angular we finished. 
-							.finally(function(){ 
-								$rootscope.$apply() 
-							});
-						};
+								// Tell angular we finished. 
+								.finally(function(){ 
+									$rootscope.$apply() 
+								});
+							};
+						});
 					});
 				} else d.reject(codes.EXISTS);
 			} else d.reject(codes.BAD_PASSWORD);
@@ -179,7 +180,7 @@ function AnimistAccount($rootScope, $q, $cordovaKeychain ){
 						password = data[2];
 
 						// Generate password derived key and check against keystore
-						wallet.keystore.deriveKeyFromPassword(password, function(err, derivedKey){
+						keystore.keyFromPassword(password, function(err, derivedKey){
 							if (err) {
 								d.reject(codes.DERIVE_KEY)
 

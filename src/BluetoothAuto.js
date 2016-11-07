@@ -261,19 +261,19 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
 
 
         // Case: Signing & submission will be remote - Write endpoint to validate presence & wait for response.
-        // Broadcasts txHash of the endpoint's authTx or error.
+        // Broadcasts txHash of the endpoint's verifyPresence transaction or error.
         } else if ( tx.authority === user.remoteAuthority){
 
             out.id = tx.sessionId;
             out.pin = user.sign(core.peripheral.pin);
 
-            core.write(out, UUID.authTx).then(
+            core.write(out, UUID.verifyPresence).then(
                 
                 function(txHash){ 
-                    $rootScope.$broadcast( events.authTxSuccess, {txHash: txHash} ); 
+                    $rootScope.$broadcast( events.verifyPresenceSuccess, {txHash: txHash} ); 
                     core.endSession() },
                 function(error){  
-                    $rootScope.$broadcast( events.authTxFailure, {error: error} );
+                    $rootScope.$broadcast( events.verifyPresenceFailure, {error: error} );
                     core.reset() }
             );
 

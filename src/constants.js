@@ -9,8 +9,8 @@ function AnimistConstants(){
         sendTxSuccess: 'Animist:sendTxSuccess',
         sendTxFailure: 'Animist:sendTxFailure',
         sendTxMethodFailure: 'Animist:sendTxMethodFailure',
-        authTxSuccess: 'Animist:authTxSuccess',
-        authTxFailure: 'Animist:authTxFailure',
+        verifyPresenceSuccess: 'Animist:verifyPresenceSuccess',
+        verifyPresenceFailure: 'Animist:verifyPresenceFailure',
         unauthorizedTx: 'Animist:unauthorizedTx',
         noTxFound: 'Animist:noTxFound',
         bleFailure: 'Animist:bleFailure'
@@ -26,11 +26,11 @@ function AnimistConstants(){
         getAccountBalance: "A85B7044-F1C5-43AD-873A-CF923B6D62E7",
         getTxStatus: "03796948-4475-4E6F-812E-18807B28A84A",
         getNewSessionId : "9BBA5055-57CA-4F78-BA61-52F4154382CF",
-        getVerifiedTxStatus : "421522D1-C7EE-494C-A1E4-029BBE644E8D",
+        getClientTxStatus : "421522D1-C7EE-494C-A1E4-029BBE644E8D",
         getPresenceReceipt: "BA2C3091-DAB8-4D51-BF92-3A6F023E9AD7",
         getContract:  "BFA15C55-ED8F-47B4-BD6A-31280E98C7BA",
-        authTx: "297E3B0A-F353-4531-9D44-3686CC8C4036",
-        authAndSendTx: "8D8577B9-E2F0-4750-BB82-421750D9BF86",
+        verifyPresence: "297E3B0A-F353-4531-9D44-3686CC8C4036",
+        verifyPresenceAndSendTx: "8D8577B9-E2F0-4750-BB82-421750D9BF86",
         sendTx : "3340BC2C-70AE-4E7A-BE24-8B2ED8E3ED06",
         callTx : "4506C117-0A27-4D90-94A1-08BB81B0738F"
     };

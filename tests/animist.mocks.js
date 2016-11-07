@@ -88,8 +88,8 @@ angular.module('animistMocks', [])
         self.mockAccountBalance = '3.33024461631390638913600059538215531811694532e+44';
         self.mockCallResult = "0x0000000000000000000000000000000000000000000000000000000000000015";
         self.mockCall = [self.mockAddress, self.mockData];
-        self.mockAuthAndSend = {pin: self.mockPin, tx: self.mockSignedTx};
-        self.mockVerifiedTxStatus = { authStatus: "success", authTxHash: self.mockTxHash, verifiedTxHash: self.mockTxHash }; 
+        self.mockVerifyPresenceAndSend = {pin: self.mockPin, tx: self.mockSignedTx};
+        self.mockClientTxStatus = { verifyPresenceStatus: "success", verifyPresenceTxHash: self.mockTxHash, clientTxHash: self.mockTxHash }; 
         self.mockSignedMessage = '0xaaaaaaaaaaa';
         self.mockPresenceReceipt = {
             time: 1470937203535,
@@ -115,7 +115,7 @@ angular.module('animistMocks', [])
         var accountBalanceRaw = self.encodeMock(JSON.stringify(self.mockAccountBalance));
         var callResultRaw = self.encodeMock(JSON.stringify(self.mockCallResult));
         var presenceReceiptRaw = self.encodeMock(JSON.stringify(self.mockPresenceReceipt));
-        var verifiedTxStatusRaw = self.encodeMock(JSON.stringify(self.mockVerifiedTxStatus));
+        var clientTxStatusRaw = self.encodeMock(JSON.stringify(self.mockClientTxStatus));
         
         var getContractRaw = [
             {status: 'subscribed', value: 0},
@@ -161,9 +161,9 @@ angular.module('animistMocks', [])
             {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockPresenceReceipt))}
         ];
 
-        var verifiedTxStatusRaw = [
+        var clientTxStatusRaw = [
             {status: 'subscribed', value: 0},
-            {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockVerifiedTxStatus))}
+            {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockClientTxStatus))}
         ];
 
         // ------------------
@@ -293,10 +293,10 @@ angular.module('animistMocks', [])
                     defer.notify(presenceReceiptRaw[0]);
                     defer.notify(presenceReceiptRaw[1]);
                 },0); 
-            } else if (self.emulateGetVerifiedTxStatus){
+            } else if (self.emulateGetClientTxStatus){
                 $timeout(function(){ 
-                    defer.notify(verifiedTxStatusRaw[0]);
-                    defer.notify(verifiedTxStatusRaw[1]);
+                    defer.notify(clientTxStatusRaw[0]);
+                    defer.notify(clientTxStatusRaw[1]);
                 },0);
             } else if (self.emulateTxHash){
 

@@ -575,7 +575,7 @@ describe('AnimistBluetoothAuto', function(){
          };
 
          // Hard coded sendTx characteristic uuid
-         var authTx_port_addr = '297E3B0A-F353-4531-9D44-3686CC8C4036'
+         var verifyPresence_port_addr = '297E3B0A-F353-4531-9D44-3686CC8C4036'
 
          // Remote agent has authority
          Core.peripheral.tx.authority = AnimistAccount.remoteAuthority;
@@ -583,11 +583,11 @@ describe('AnimistBluetoothAuto', function(){
          promise = Auto.openLink(beacon_id);
          $timeout.flush();
 
-         expect(Core.write).toHaveBeenCalledWith(expected_out, authTx_port_addr)
+         expect(Core.write).toHaveBeenCalledWith(expected_out, verifyPresence_port_addr)
 
       });
 
-      it('should broadcast authTxSuccess & txHash data if oracle auth write is ok and then end session', function(){
+      it('should broadcast verifyPresenceSuccess & txHash data if oracle auth write is ok and then end session', function(){
 
          var expected_hash = {txHash: $ble.mockWriteTxResult}
 
@@ -598,16 +598,16 @@ describe('AnimistBluetoothAuto', function(){
          promise = Auto.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxSuccess', expected_hash);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:verifyPresenceSuccess', expected_hash);
          expect(Core.endSession).toHaveBeenCalled();
 
       });
 
-      it('should broadcast authTxFailure if oracle auth write fails and then reset', function(){
+      it('should broadcast verifyPresenceFailure if oracle auth write fails and then reset', function(){
 
          var expected_error = { 
             error : { 
-               where : 'AnimistBluetoothCore:write: ' + uuids.authTx, 
+               where : 'AnimistBluetoothCore:write: ' + uuids.verifyPresence, 
                error : 0x01
             }
          }
@@ -620,7 +620,7 @@ describe('AnimistBluetoothAuto', function(){
          promise = Auto.openLink(beacon_id);
          $timeout.flush();
 
-         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:authTxFailure', expected_error);
+         expect($scope.$broadcast).toHaveBeenCalledWith('Animist:verifyPresenceFailure', expected_error);
          expect(Core.reset).toHaveBeenCalled();
       });
 

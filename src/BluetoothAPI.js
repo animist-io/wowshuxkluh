@@ -162,21 +162,21 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
     /**
      * @ngdoc method
      * @methodOf animist.service:AnimistBluetoothAPI
-     * @description  Gets the hash of a transaction submitted by an atomic authAndSend request. 
+     * @description  Gets the hash of a transaction submitted by an atomic verifyPresenceAndSendTx request. 
      *               Hash is available once the authTx has been mined and caller's transaction has been 
-     *               published to chain. Also returns authStatus data which may be 'pending' or 'failed' 
-     *               if authTx is unmined or ran out of gas.
-     * @name  animist.service:AnimistBluetoothAPI.getVerifiedTxStatus 
-     * @return {Promise} Resolves obj: `{authStatus: "success", authTxHash: "0x7d..3", verifiedTxHash: "0x32..e" }` OR null.
-     *                   Rejects with error object
+     *               published to chain. Also returns verifPresenceStatus data which may be 'pending' or 'failed' 
+     *               if verifyPresence is unmined or ran out of gas.
+     * @name  animist.service:AnimistBluetoothAPI.getClientTxStatus 
+     * @return {Promise} Resolves obj or rejects with error.
+     * @example `{verifyPresenceStatus: "success", verifyPresenceTxHash: "0x7d..3", clientTxHash: "0x32..e" }` OR null.
      */
-    self.getVerifiedTxStatus = function(){
+    self.getClientTxStatus = function(){
 
         var d = $q.defer();
         
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write(pin, UUID.getVerifiedTxStatus)
+            core.write(pin, UUID.getClientTxStatus)
                 .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
@@ -220,15 +220,15 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      * @methodOf animist.service:AnimistBluetoothAPI
      * @description  Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
      *               method with the device account. Returns transaction hash.
-     * @name  animist.service:AnimistBluetoothAPI.authTx 
+     * @name  animist.service:AnimistBluetoothAPI.verifyPresence 
      * @return {Promise} Resolves string: transaction hash OR null, rejects with error object
      */
-    self.authTx = function(){
+    self.verifyPresence = function(){
         var d = $q.defer();
         
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write(pin, UUID.authTx)
+            core.write(pin, UUID.verifyPresence)
                 .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 
@@ -241,18 +241,19 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      * @ngdoc method
      * @methodOf animist.service:AnimistBluetoothAPI
      * @description  Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
-     *               method with the device account. Waits for auth to be mined and sends client's raw transaction. 
-     *               This method provides a way of authenticating and sending a transaction in a single step.        
-     * @name  animist.service:AnimistBluetoothAPI.authAndSendTx 
+     *               method with the device account. Waits for presence verification to be mined and sends client's 
+     *               raw transaction.  This method provides a way of authenticating client's proximity to the node
+     *               and sending a transaction in a single step.        
+     * @name  animist.service:AnimistBluetoothAPI.verifyPresenceAndSendTx 
      * @param  {String} rawTx : transaction signed by the user. 
      * @return {Promise} Resolves string: authTx hash OR null, rejects with error object
      */
-    self.authAndSendTx = function(rawTx){
+    self.verifyPresenceAndSendTx = function(rawTx){
         var d = $q.defer();
         
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write({pin: pin, tx: rawTx}, UUID.authAndSendTx)
+            core.write({pin: pin, tx: rawTx}, UUID.verifyPresenceAndSendTx)
                 .then(function(res){ d.resolve( JSON.parse(res) ) })
                 .catch(function(err){ d.reject(err) })
 

@@ -234,6 +234,30 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
     /**
      * @ngdoc method
      * @methodOf animist.service:AnimistBluetoothAPI
+     * @description  Returns `address` of the contract which requested presence verification services for 
+     *               the mobile client at current node.
+     * @name  animist.service:AnimistBluetoothAPI.getContractAddress 
+     * @return {Promise} Resolves string (address): `0xa8r7e...eec` OR null
+     *                   Rejects with error object.
+     */
+    self.getContractAddress = function(){
+
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            core.write(pin, UUID.getContractAddress)
+                .then(function(res){ d.resolve(JSON.parse(res) ) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
+    /**
+     * @ngdoc method
+     * @methodOf animist.service:AnimistBluetoothAPI
      * @description  Authenticates client's proximity to animist node by invoking their contract's "verifyPresence" 
      *               method with the device account. Returns transaction hash.
      * @name  animist.service:AnimistBluetoothAPI.verifyPresence 

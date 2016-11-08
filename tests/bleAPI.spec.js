@@ -65,7 +65,7 @@ describe('AnimistBluetoothAPI', function(){
         });
     });
 
-    ddescribe('getPgpKeyId', function(){
+    describe('getPgpKeyId', function(){
 
         it('should read the pgpKeyId uuid', function(){
             spyOn(Core, 'read').and.callThrough();
@@ -349,6 +349,36 @@ describe('AnimistBluetoothAPI', function(){
             $ble.throwsSubscribe = true;
             error = { where : 'AnimistBluetoothCore:writeWithLongResponse: ' + uuids.getContract, error : 0x01 };
             promise = API.getContract();
+            $scope.$digest();
+            expect(promise.$$state.status).toEqual(2);
+            expect(promise.$$state.value).toEqual(error);
+        });
+    });
+
+    describe('getContractAddress', function(){
+
+        it('should subscribe to the contractAddress uuid', function(){
+            spyOn(Core, 'write').and.callThrough();
+            API.getContractAddress();
+            $scope.$digest();
+            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuids.getContractAddress);
+        });
+
+        it('should resolve an address on success', function(){
+            spyOn(Core, 'write').and.callThrough();
+            $ble.emulateGetContractAddress = true;
+            promise = API.getContractAddress();
+            $timeout.flush();
+            expect(promise.$$state.status).toEqual(1);
+            expect(promise.$$state.value).toEqual($ble.mockAddress);
+            $ble.emulateGetContractAddress = false;
+        });
+
+        it('should reject with error object on failure', function(){
+            spyOn(Core, 'write').and.callThrough();
+            $ble.throwsSubscribe = true;
+            error = { where : 'AnimistBluetoothCore:write: ' + uuids.getContractAddress, error : 0x01 };
+            promise = API.getContractAddress();
             $scope.$digest();
             expect(promise.$$state.status).toEqual(2);
             expect(promise.$$state.value).toEqual(error);

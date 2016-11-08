@@ -98,7 +98,6 @@ angular.module('animistMocks', [])
             signedAddress: '0x086addd03f0b0adff418a68ebad482ef8c84d57b49a0373bbab6262175c2899920b1c532458b4ba29125315510cbc20167d458781639f2e8b172464818f579391b' 
         };
 
-
         // Private Mock data
         var scanResult = { "status":"scanResult","advertisement":{"solicitedServiceUuids":[],"overflowServiceUuids":[],"localName":"Animist","isConnectable":true,"serviceData":{},"serviceUuids":["56D2E78E-FACE-44C4-A786-1763EA8E4302"]},"rssi":-35,"name":"User’s Mac mini","address":"B70DCC59-4B65-C819-1C2C-D32B7FA0369A"};
         var discoverResult = {"status":"discovered","services":[{"characteristics":[{"descriptors":[],"properties":{"read":true},"uuid":"2A29"},{"descriptors":[],"properties":{"read":true},"uuid":"2A24"}],"uuid":"180A"},{"characteristics":[{"descriptors":[{"uuid":"2902"}],"properties":{"write":true,"notify":true},"uuid":"8667556C-9A37-4C91-84ED-54EE27D90049"}],"uuid":"D0611E78-BBB4-4591-A5F8-487910AE4366"},{"characteristics":[{"descriptors":[],"properties":{"read":true},"uuid":"C40C94B3-D9FF-45A0-9A37-032D72E423A9"},{"descriptors":[{"uuid":"2902"}],"properties":{"write":true,"indicate":true},"uuid":"BFA15C55-ED8F-47B4-BD6A-31280E98C7BA"}],"uuid":"56D2E78E-FACE-44C4-A786-1763EA8E4302"}],"name":"User’s Mac mini","address":"B70DCC59-4B65-C819-1C2C-D32B7FA0369A"};
@@ -111,14 +110,6 @@ angular.module('animistMocks', [])
         var pgpKeyIdRaw = self.encodeMock(JSON.stringify(self.mockPgpKeyId));
 
         // Subscribe/writes
-        var txStatusRaw = self.encodeMock(JSON.stringify(self.mockTxStatus));
-        var newSessionIdRaw = self.encodeMock(JSON.stringify(self.mockSessionData));
-        var txHashRaw = self.encodeMock(JSON.stringify(self.mockTxHash));
-        var accountBalanceRaw = self.encodeMock(JSON.stringify(self.mockAccountBalance));
-        var callResultRaw = self.encodeMock(JSON.stringify(self.mockCallResult));
-        var presenceReceiptRaw = self.encodeMock(JSON.stringify(self.mockPresenceReceipt));
-        var clientTxStatusRaw = self.encodeMock(JSON.stringify(self.mockClientTxStatus));
-        
         var getContractRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock("{\"code\":\"606060405261038180610013600061037c565b")},
@@ -131,8 +122,7 @@ angular.module('animistMocks', [])
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock(self.mockWriteTxResult)}
         ];
-
-        
+  
         var txStatusRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockTxStatus))}
@@ -161,6 +151,11 @@ angular.module('animistMocks', [])
         var presenceReceiptRaw = [
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockPresenceReceipt))}
+        ];
+
+        var contractAddressRaw = [
+            {status: 'subscribed', value: 0},
+            {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockAddress))}
         ];
 
         var clientTxStatusRaw = [
@@ -264,7 +259,6 @@ angular.module('animistMocks', [])
             if (self.throwsSubscribe){
                 defer.reject(0x01);
             } else if (self.emulateGetContract){
-
                 angular.forEach(getContractRaw, function(packet){
                     $timeout(function(){ defer.notify(packet) },0);
                 });
@@ -297,6 +291,11 @@ angular.module('animistMocks', [])
                 $timeout(function(){ 
                     defer.notify(presenceReceiptRaw[0]);
                     defer.notify(presenceReceiptRaw[1]);
+                },0); 
+            } else if (self.emulateGetContractAddress){
+                $timeout(function(){ 
+                    defer.notify(contractAddressRaw[0]);
+                    defer.notify(contractAddressRaw[1]);
                 },0); 
             } else if (self.emulateGetClientTxStatus){
                 $timeout(function(){ 

@@ -80,6 +80,7 @@ angular.module('animistMocks', [])
         self.mockSignedTx = "f8848001832dc6c0941251e5657d6ba0e397a6889e031efa8b87a805b180a4a9e966b700000000000000000000000000000000000000000000000000000000000000021ba086298e9f8da3a86aec0b9af7ad113e97356120c2c3f76a47de35e7a47ba1c4c2a0562af5ac95e6403bdef824225ae55fcf0a2a37f517b3ac143e887a65729c5085";
         self.mockPin = "iciIKTtuadkwlzF3v3CElZNoXfLW5H0p";
         self.mockBlockNumber = 2247;
+        self.mockPgpKeyId = '32e6aa474db4f922';
         self.mockAddress = '0x407d73d8a49eeb85d32cf465507dd71d507100c1';
         self.mockTxStatus =  {"blockNumber": 3,"gasUsed": 30234};
         
@@ -107,6 +108,7 @@ angular.module('animistMocks', [])
         var pinResultRaw = self.encodeMock(JSON.stringify(self.mockPin));
         var blockNumberRaw = self.encodeMock(JSON.stringify(self.mockBlockNumber));
         var deviceAccountRaw = self.encodeMock(JSON.stringify(self.mockAddress));
+        var pgpKeyIdRaw = self.encodeMock(JSON.stringify(self.mockPgpKeyId));
 
         // Subscribe/writes
         var txStatusRaw = self.encodeMock(JSON.stringify(self.mockTxStatus));
@@ -246,6 +248,9 @@ angular.module('animistMocks', [])
                 defer.resolve({status: true, value: blockNumberRaw});
             else if (self.emulateGetDeviceAccount)
                 defer.resolve({status: true, value: deviceAccountRaw});
+            else if (self.emulateGetPgpKeyId)
+                defer.resolve({status: true, value: pgpKeyIdRaw});
+            
             // This is stupid but default is to read pin.
             else defer.resolve({status: true, value: pinResultRaw});
             

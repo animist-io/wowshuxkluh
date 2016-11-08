@@ -37,6 +37,22 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
     /**
      * @ngdoc method
      * @methodOf animist.service:AnimistBluetoothAPI
+     * @description  Reads a PGP keyID that can be used to feth the node's public PGP key from
+     *               `https://pgp.mit.edu.'  Encryption is required to write to several of 
+     *               whale-island's endpoints including `verifyPresence`, verifyPresenceAndSendTx`, `sendTx`, and 
+     *              `readWithConfirmation`
+     * @name  animist.service:AnimistBluetoothAPI.getPgpKeyId
+     * @returns {Promise} Resolves string: a PGP keyID. Rejects w/ error object
+     */
+    self.getPgpKeyId = function(){ 
+        return core.read(UUID.getPgpKeyId)
+            .then( function(res){ return core.peripheral.pgpKeyId = JSON.parse(res) })
+            .catch( function(err){ return $q.reject(err) });
+    }
+
+    /**
+     * @ngdoc method
+     * @methodOf animist.service:AnimistBluetoothAPI
      * @description  Gets Animist node's public account address (and caches it in core.peripheral). 
      *               This address identifies the node in IPFS and is the account used to execute Animist 
      *               contract API methods on client's behalf. 

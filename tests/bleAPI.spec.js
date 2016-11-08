@@ -65,6 +65,35 @@ describe('AnimistBluetoothAPI', function(){
         });
     });
 
+    ddescribe('getPgpKeyId', function(){
+
+        it('should read the pgpKeyId uuid', function(){
+            spyOn(Core, 'read').and.callThrough();
+            API.getPgpKeyId();
+            $scope.$digest();
+            expect(Core.read).toHaveBeenCalledWith(uuids.getPgpKeyId);
+        });
+
+        it('should resolve the account number on success', function(){
+            spyOn(Core, 'read').and.callThrough();
+            $ble.emulateGetPgpKeyId = true;
+            promise = API.getPgpKeyId();
+            $scope.$digest();
+            expect(promise.$$state.status).toEqual(1);
+            expect(promise.$$state.value).toEqual($ble.mockPgpKeyId);
+        });
+
+        it('should reject with error object on failure', function(){
+            spyOn(Core, 'read').and.callThrough();
+            $ble.throwsRead = true;
+            error = { where : 'AnimistBluetoothCore:read: ' + uuids.getDeviceAccount, error : undefined };
+            promise = API.getDeviceAccount();
+            $scope.$digest();
+            expect(promise.$$state.status).toEqual(2);
+            expect(promise.$$state.value).toEqual(error);
+        });
+    });
+
     describe('getDeviceAccount', function(){
 
         it('should read the getDeviceAccount uuid', function(){

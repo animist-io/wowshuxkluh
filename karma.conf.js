@@ -30,17 +30,17 @@ module.exports = function(config) {
          "src/accounts.js",
          "src/beacon.js",
          "src/constants.js",
-         "src/BluetoothAPI.js",
-         "src/BluetoothAuto.js",
-         "src/BluetoothCore.js",
+         "src/bleAPI.js",
+         "src/bleAuto.js",
+         "src/bleCore.js",
 
          "tests/animist.mocks.js",
 
          "tests/beacon.spec.js",
          "tests/accounts.spec.js",
-         "tests/BluetoothCore.spec.js",
-         "tests/BluetoothAuto.spec.js",
-         "tests/BluetoothAPI.spec.js"  
+         "tests/bleCore.spec.js",
+         "tests/bleAuto.spec.js",
+         "tests/bleAPI.spec.js"  
       ],
 
       // list of files to exclude

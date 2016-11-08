@@ -27,6 +27,7 @@ function AnimistConstants(){
         getTxStatus: "03796948-4475-4E6F-812E-18807B28A84A",
         getNewSessionId : "9BBA5055-57CA-4F78-BA61-52F4154382CF",
         getClientTxStatus : "421522D1-C7EE-494C-A1E4-029BBE644E8D",
+        getPgpKeyId: "75C06966-FEF2-4B23-A5AE-60BA8A5C622C",
         getPresenceReceipt: "BA2C3091-DAB8-4D51-BF92-3A6F023E9AD7",
         getContract:  "BFA15C55-ED8F-47B4-BD6A-31280E98C7BA",
         verifyPresence: "297E3B0A-F353-4531-9D44-3686CC8C4036",

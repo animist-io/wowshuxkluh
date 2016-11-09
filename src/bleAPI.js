@@ -15,7 +15,7 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
     var events = AnimistConstants.events;
     var user = AnimistAccount;
     var core = AnimistBluetoothCore;
-    var ethUtil = ethereumjs.util;
+    var ethUtil = npm.ethUtil;
 
     // ------------------------------ Public (non-pin) Server Endpoints  ----------------------------
      

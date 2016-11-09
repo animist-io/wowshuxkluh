@@ -23,7 +23,7 @@ module.exports = function(config) {
          "bower_components/angular-pouchdb/angular-pouchdb.js",
          "bower_components/ngCordova/dist/ng-cordova-mocks.js",
          "lib/lightwallet.js",
-         "lib/ethereumjs.js",
+         "lib/bundle.js",
          //"node_modules/eth-lightwallet/dist/lightwallet.js",
          
          "src/animist.js",

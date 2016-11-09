@@ -13,7 +13,8 @@
     "karma-cli": "^1.0.0",
     "karma-jasmine": "^0.2.2",
     "karma-mocha-reporter": "^2.0.3",
-    "karma-ng-html2js-preprocessor": "^1.0.0"
+    "karma-ng-html2js-preprocessor": "^1.0.0",
+    "openpgp": "^2.3.5"
   },
   "devDependencies": {
     "ethereumjs-util": "^4.5.0",
@@ -21,7 +22,7 @@
     "gulp-ngdocs": "^0.3.0"
   },
   "scripts": {
-    "build-eth": "browserify ethjs_assets.js -o lib/ethereumjs.js --s ethereumjs",
+    "bundle-npm-assets": "browserify npm_assets.js -o lib/bundle.js --s npm",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

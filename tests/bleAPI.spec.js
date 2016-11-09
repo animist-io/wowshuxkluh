@@ -10,7 +10,7 @@ describe('AnimistBluetoothAPI', function(){
     var $scope, $q, $ble, uuids, Auto, Core, API, Beacons, AnimistAccount, $timeout, 
         promise, error;
 
-    var ethUtil = ethereumjs.util;
+    var ethUtil = npm.ethUtil;
 
 
     beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBluetoothLE_, _$timeout_, 

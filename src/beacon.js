@@ -1,7 +1,6 @@
 "use strict"
 
-angular.module('animist')
-  .service("AnimistBeacons", AnimistBeacons);
+angular.module('animist').service("AnimistBeacons", AnimistBeacons);
 
     function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBluetoothCore, AnimistBluetoothAuto ){
 

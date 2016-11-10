@@ -33,14 +33,17 @@ module.exports = function(config) {
          "src/bleAPI.js",
          "src/bleAuto.js",
          "src/bleCore.js",
+         "src/pgp.js",
 
          "tests/animist.mocks.js",
+         "tests/keystore.mocks.js",
 
          "tests/beacon.spec.js",
          "tests/accounts.spec.js",
          "tests/bleCore.spec.js",
          "tests/bleAuto.spec.js",
-         "tests/bleAPI.spec.js"  
+         "tests/bleAPI.spec.js",
+         "tests/pgp.spec.js",  
       ],
 
       // list of files to exclude

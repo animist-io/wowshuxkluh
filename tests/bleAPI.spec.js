@@ -1,5 +1,3 @@
-var debug = window;
-
 describe('AnimistBluetoothAPI', function(){
 
 

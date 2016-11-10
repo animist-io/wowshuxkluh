@@ -19,7 +19,6 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
         NOT_INITIALIZED: here + 'Cannot encrypt - no public key for node',
     }
 
-
     /**
      * @ngdoc method
      * @methodOf animist.service.AnimistPgp
@@ -32,14 +31,16 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
     self.encrypt = function(data){
         var options;
     
-        if (!core.peripheral.publicKey) return $q.reject(codes.NOT_INITIALIZED);
-
+        if (!core.peripheral.publicKey){
+            return $q.reject(codes.NOT_INITIALIZED);
+        } 
+            
         try {      
             options = {
                 data: data,
-                publicKeys: openpgp.key.readArmored(core.peripheral.publicKey).keys[0],
+                publicKeys: npm.openpgp.key.readArmored(core.peripheral.publicKey).keys[0],
             };
-            return openpgp.encrypt(options).then(function(cipher){ 
+            return npm.openpgp.encrypt(options).then(function(cipher){ 
                 return cipher.data
             }); 
 
@@ -57,8 +58,21 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
      * @return {Promise} Resolves string key or rejects w/ error
     */
     self.getPublicKeyFromMIT = function(keyId){
-        var hkp = new openpgp.HKP('https://pgp.mit.edu');
-        return $q.when( hkp.lookup({ keyId: keyid }));
+        var hkp = new npm.openpgp.HKP('https://pgp.mit.edu');
+        var d = $q.defer();
+        
+        hkp.lookup({ keyId: keyId })
+            .then(function(key){
+                d.resolve(key);
+                $rootScope.$apply();
+            })
+            .catch(function(err){
+                d.reject(err);
+                $rootScope.$apply();
+            })
+
+        return d.promise;
+        
     }
 }    
 

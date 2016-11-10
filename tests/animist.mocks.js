@@ -1,15 +1,15 @@
-angular.module('animistMocks', [])
+angular.module('animistMocks', ['pgpKeystoreMocks'])
 
     // ----------------------------------------- Mock PGP --------------------------------------------------
     // Data to emulate fetching the pgp key plus decryption for units. 
     // This duplicates the key / passphrase from the whale island tests.
-    .service('pgp', function(){
+    .service('mockPgp', function($rootScope, keystore, $q){
 
-        var privKey;
+        var privKey, self = this;
         var pgpPassphrase = "mgxuMbgMLRhJrUHEYs1mYEpZ1";
-
-        privkey = pgpkey.privateKeyArmored;
-        privkey = openpgp.key.readArmored(privkey);
+    
+        privkey = keystore.data.privateKeyArmored;
+        privkey = npm.openpgp.key.readArmored(privkey);
         privkey.keys[0].decrypt(pgpPassphrase); 
         privkey = privkey.keys[0];
 
@@ -40,14 +40,18 @@ angular.module('animistMocks', [])
         self.decrypt = function(encrypted){
 
             var msg;
+            var d = $q.defer();
             try {
-                msg = openpgp.message.readArmored(encrypted);
-                return $q.when( msg.decrypt(privkey)).then(function(decrypted){ 
-                    return decrypted.getText(); 
+                msg = npm.openpgp.message.readArmored(encrypted);
+                msg.decrypt(privkey).then(function(decrypted){ 
+                    d.resolve(decrypted.getText()); 
+                    $rootScope.$apply();
                 });  
+                return d.promise;
             } catch (err) {
                 return $q.reject();
             }
+
         };
     })
 

@@ -38,6 +38,62 @@ describe('AnimistBluetoothAPI - Encrypted methods', function(){
         uuids = Constants.serverCharacteristicUUIDs;
     });
 
+
+    describe('sendTx', function(){
+
+        it('should subscribe to the sendTx uuid with an encrypted pin', function(done){
+            
+            spyOn(Core, 'write').and.returnValue($q.when('{}'));
+            Core.peripheral.publicKey = mockPgp.publicKey;
+            var expected = { pin: $ble.mockSignedMessage, tx: $ble.mockSignedTx };
+
+            API.sendTx($ble.mockSignedTx).then(function(){
+
+                // Decrypt first arg of write call
+                mockPgp.decrypt(Core.write.calls.argsFor(0)[0]).then(function(res){
+
+                    // The mocked signed pin for tests is $ble.mockSignedMessage
+                    var parsedRes = JSON.parse(res);
+                    expect(parsedRes).toEqual(expected);
+                    expect(Core.write.calls.argsFor(0)[1]).toEqual(uuids.sendTx);
+                    done();
+                });
+            });
+        });
+
+        it('should resolve a transaction hash string on success', function(done){
+            
+            var expected = JSON.stringify($ble.mockTxHash);
+            Core.peripheral.publicKey = mockPgp.publicKey;
+            spyOn(Core, 'write').and.returnValue($q.when(expected));
+            API.sendTx($ble.mockSignedTx).then(function(res){
+                expect(res).toEqual($ble.mockTxHash);
+                done();
+            });
+
+        });
+
+        it('should reject with error object on failure', function(done){
+            
+            var expected = { where : 'AnimistBluetoothCore:write: ' + uuids.sendTx, error : 0x01 };
+            Core.peripheral.publicKey = mockPgp.publicKey;
+            spyOn(Core, 'write').and.returnValue($q.reject(expected));
+
+            API.sendTx($ble.mockSignedTx).catch(function(res){
+                expect(res).toEqual(expected);
+                done();
+            });
+        });
+
+        it('should reject with error object if core.peripheral doesnt have the publicKey', function(done){
+
+            API.sendTx($ble.mockSignedTx).catch(function(res){
+                expect(typeof res).toEqual('object');
+                done();
+            });
+        });
+    });
+
     describe('verifyPresence', function(){
 
         it('should subscribe to the verifyPresence uuid with an encrypted pin', function(done){

@@ -262,6 +262,37 @@ function AnimistBluetoothAPI(
         return d.promise;
     }
 
+
+    /**
+     * @ngdoc method
+     * @methodOf animist.service:AnimistBluetoothAPI
+     * @description Sends a signed transaction to the node for publication to the blockchain. 
+     *              This method should be used to invoke any contract method that uses gas but
+     *              doesn't require any of whale-island's location-based services per se. (i.e 
+     *              is just using whale-island as a bluetooth based web3 provider.)        
+     * @name  animist.service:AnimistBluetoothAPI.verifyPresenceAndSendTx 
+     * @param  {String} rawTx : transaction signed by the user. 
+     * @return {Promise} Resolves string: authTx hash OR null, rejects with error object
+     */
+    self.sendTx = function(rawTx){
+        var out;
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            out = JSON.stringify({pin: pin, tx: rawTx});
+            pgp.encrypt(out)
+                .then(function(encrypted){
+                    core.write(encrypted, UUID.sendTx)
+                        .then(function(res){ d.resolve( JSON.parse(res) ) })
+                        .catch(function(err){d.reject(err)}) 
+                })
+                .catch(function(err){ d.reject(err) })
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
     /**
      * @ngdoc method
      * @methodOf animist.service:AnimistBluetoothAPI

@@ -259,25 +259,6 @@ describe('AnimistBluetoothAuto', function(){
       // Case: Reconnection Attempts w/ a cached tx
       // -------------------------------------------
 
-      it('should check cached txs for staleness and reset/resolve when old', function(){
-
-         Core.peripheral = {
-            address: ble_address,
-            service: service_uuid,
-            tx: JSON.parse($ble.mockGetContractResult)
-         };
-
-         Core.peripheral.tx.expires = (Date.now() - 10000000);
-         spyOn(Core, 'reset');
-
-         promise = Auto.openLink(service_uuid );
-         $scope.$digest();
-
-         expect(promise.$$state.status).toEqual(1);
-         expect(Core.reset).toHaveBeenCalled();
-
-      });
-
       it('should resolve if cur. proximity wrong and listen loop should continue to cycle', function(){
 
          Core.peripheral = {

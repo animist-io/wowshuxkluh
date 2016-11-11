@@ -131,29 +131,6 @@ function AnimistBluetoothAPI(
     }
 
     // ------------------------------------ PIN-Access Server Endpoints  --------------------------------
-    /**
-     * @ngdoc method
-     * @methodOf animist.service:AnimistBluetoothAPI
-     * @description   Gets a new sessionId (linked to caller account) from server. This id required to use the 
-     *                sendTx endpoint.
-     * @name  animist.service:AnimistBluetoothAPI.getNewSessionId 
-     * @return {Promise} Resolves obj: `{ sessionId: "a34..4q', expires: '435...01', account: '0x78ef..a' }` OR null.
-     *                   Rejects with error object.
-     */
-    self.getNewSessionId = function(){
-
-        var d = $q.defer();
-        
-        self.getPin().then(function(pin){
-            pin = user.sign(pin);
-            core.write(pin, UUID.getNewSessionId)
-                .then(function(res){ d.resolve( JSON.parse(res) ) })
-                .catch(function(err){ d.reject(err) })
-
-        }).catch(function(err){ d.reject(err)})
-
-        return d.promise;
-    }
 
     /**
      * @ngdoc method

@@ -60,11 +60,6 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
         return (Object.keys(core.peripheral).length != 0);
     }
 
-    // hasTimedOut(): Is now later than session timeout specified by endpoint when it returned tx?
-    function hasTimedOut(){
-        return (Date.now() > core.peripheral.tx.expires);
-    }
-
     // canOpenLink(): Are we transacting or completed? Is beacon Animist? Is proximity real?
     // All preconditions to opening a link. 
     function canOpenLink( beaconId, proximity ){
@@ -182,14 +177,8 @@ function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluet
                     return api.getContract();
                 })
                 .catch(function(e){ return $q.reject(e) });  
-
-        // Case: Cached tx but session is stale. This means user connected but never got close
-        // enough to endpoint to meet the contract req. Start again w/ a hard reset.
-        } else if (hasTimedOut()){
-
-            return $q.when( core.reset() );
-            
-        // Case: Cached, session current and we might reconnect w/ right proximity: 
+    
+        // Case: Cached, and we might reconnect w/ right proximity: 
         // Check this, connect and submit cached tx, then wait . . .
         } else if (proximityMatch(core.peripheral.tx )) {
 

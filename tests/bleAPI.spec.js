@@ -247,35 +247,6 @@ describe('AnimistBluetoothAPI', function(){
         });
     });
 
-    describe('getNewSessionId', function(){
-
-        it('should subscribe to the getNewSessionId uuid with signed pin', function(){
-            spyOn(Core, 'write').and.callThrough();
-            API.getNewSessionId();
-            $scope.$digest();
-            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuids.getNewSessionId);
-        });
-
-        it('should resolve a session data object on success', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.emulateGetNewSessionId = true;
-            promise = API.getNewSessionId();
-            $timeout.flush();
-            expect(promise.$$state.status).toEqual(1);
-            expect(promise.$$state.value).toEqual($ble.mockSessionData);
-        });
-
-        it('should reject with error object on failure', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.throwsSubscribe = true;
-            error = { where : 'AnimistBluetoothCore:write: ' + uuids.getNewSessionId, error : 0x01 };
-            promise = API.getNewSessionId();
-            $scope.$digest();
-            expect(promise.$$state.status).toEqual(2);
-            expect(promise.$$state.value).toEqual(error);
-        });
-    });
-
     describe('getPresenceReceipt', function(){
 
         it('should subscribe to the getPresenceReceipt uuid with signed pin', function(){

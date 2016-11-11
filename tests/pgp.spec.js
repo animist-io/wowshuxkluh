@@ -54,9 +54,9 @@ describe('AnimistPgp', function(){
             }).finally(done);*/
 
             // This doesn't work on Travis bc its an http call?
-            //done();
+            done();
         });  
-    })
+    });
 
 
 });

@@ -8,13 +8,20 @@ angular.module('animist').service("AnimistBluetoothAPI", AnimistBluetoothAPI);
  * @name  animist.service:AnimistBlueToothAPI
  * @description  Methods to access whale-island Bluetooth LE endpoints
  */
-function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, AnimistBluetoothCore ){
+function AnimistBluetoothAPI(
+        $rootScope, 
+        $q, 
+        AnimistAccount, 
+        AnimistConstants, 
+        AnimistBluetoothCore, 
+        AnimistPgp ){
 
     var self = this;
     var UUID = AnimistConstants.serverCharacteristicUUIDs;
     var events = AnimistConstants.events;
     var user = AnimistAccount;
     var core = AnimistBluetoothCore;
+    var pgp = AnimistPgp;
     var ethUtil = npm.ethUtil;
 
     // ------------------------------ Public (non-pin) Server Endpoints  ----------------------------
@@ -265,13 +272,16 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      */
     self.verifyPresence = function(){
         var d = $q.defer();
-        
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write(pin, UUID.verifyPresence)
-                .then(function(res){ d.resolve( JSON.parse(res) ) })
+            pgp.encrypt(pin)
+                .then(function(encrypted){ 
+            
+                    core.write(encrypted, UUID.verifyPresence)
+                        .then(function(res){ d.resolve( JSON.parse(res) ) })
+                        .catch(function(err){d.reject(err)}) 
+                }) 
                 .catch(function(err){ d.reject(err) })
-
         }).catch(function(err){ d.reject(err)})
 
         return d.promise;
@@ -289,14 +299,19 @@ function AnimistBluetoothAPI($rootScope, $q, AnimistAccount, AnimistConstants, A
      * @return {Promise} Resolves string: authTx hash OR null, rejects with error object
      */
     self.verifyPresenceAndSendTx = function(rawTx){
+        var out;
         var d = $q.defer();
         
         self.getPin().then(function(pin){
             pin = user.sign(pin);
-            core.write({pin: pin, tx: rawTx}, UUID.verifyPresenceAndSendTx)
-                .then(function(res){ d.resolve( JSON.parse(res) ) })
+            out = JSON.stringify({pin: pin, tx: rawTx});
+            pgp.encrypt(out)
+                .then(function(encrypted){
+                    core.write(encrypted, UUID.verifyPresenceAndSendTx)
+                        .then(function(res){ d.resolve( JSON.parse(res) ) })
+                        .catch(function(err){d.reject(err)}) 
+                })
                 .catch(function(err){ d.reject(err) })
-
         }).catch(function(err){ d.reject(err)})
 
         return d.promise;

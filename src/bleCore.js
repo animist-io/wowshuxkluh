@@ -1,6 +1,10 @@
 angular.module('animist').service("AnimistBluetoothCore", AnimistBluetoothCore);
 
-function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConstants ){
+function AnimistBluetoothCore(
+        $rootScope, 
+        $q, 
+        $cordovaBluetoothLE, 
+        AnimistConstants ){
 
     var self = this;
     var codes = AnimistConstants.serverHexCodes;
@@ -282,7 +286,7 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
             characteristic: dest,
             timeout: 5000
         };
-
+        
         out = encode(out);
 
         // Subscribe
@@ -291,7 +295,6 @@ function AnimistBluetoothCore($rootScope, $q, $cordovaBluetoothLE, AnimistConsta
             function(error){ d.reject({where: where, error: error})},
             
             function(sub){ 
-                
                 // Subscribed: write tx to target, wait for txHash notice
                 if (sub.status === 'subscribed'){
 

@@ -4,22 +4,22 @@ describe('AnimistPgp', function(){
     beforeEach(module('animistMocks'));     // Decryption methods, public key
     beforeEach(module('pgpKeystoreMocks')); // Keystore
 
-    var $scope, $q, Core, pgp,  $timeout, mocks, promise, error;
+    var $scope, $q, core, pgp, mocks, promise;
 
-    beforeEach(inject(function(_$rootScope_, _$q_, _$timeout_, _AnimistPgp_,
-                              _AnimistBluetoothCore_, _AnimistConstants_, _mockPgp_ ){
-     
-        $scope = _$rootScope_;
-        $q = _$q_;
-        $timeout = _$timeout_;
-    
-        core = _AnimistBluetoothCore_;
-        pgp = _AnimistPgp_;
-        mocks = _mockPgp_;
+    beforeEach(function(){
+      
+        var $injector = angular.injector(['ng', 'animist', 'animistMocks']);
+
+        $scope = $injector.get('$rootScope');
+        $q = $injector.get('$q');
+
+        core = $injector.get('AnimistBluetoothCore');
+        pgp = $injector.get('AnimistPgp');
+        mocks = $injector.get('mockPgp');
 
         core.peripheral.publicKey = null;
 
-    }));
+    });
 
     describe('encrypt(data)', function(){
 
@@ -32,7 +32,6 @@ describe('AnimistPgp', function(){
                     expect(decrypted).toEqual('hello');
                 }).finally(done);
             })
-
         });
 
         it('should reject if client doesnt have the public key yet', function(){
@@ -50,12 +49,12 @@ describe('AnimistPgp', function(){
                 'Version: SKS 1.1.5\n' +
                 'Comment: Hostname: pgp.mit.edu\n'
 
-            /*pgp.getPublicKeyFromMIT(mocks.pgpKeyId).then(function(key){
+            pgp.getPublicKeyFromMIT(mocks.pgpKeyId).then(function(key){
                 expect(key.includes(header)).toBe(true);
-            }).finally(done);*/
+            }).finally(done);
 
             // This doesn't work on Travis bc its an http call?
-            done();
+            //done();
         });  
     })
 

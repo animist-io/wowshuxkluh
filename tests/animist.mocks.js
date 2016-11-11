@@ -46,9 +46,12 @@ angular.module('animistMocks', ['pgpKeystoreMocks'])
                 msg.decrypt(privkey).then(function(decrypted){ 
                     d.resolve(decrypted.getText()); 
                     $rootScope.$apply();
+                }).catch(function(err){
+                    console.log('ERROR: ' + err);
                 });  
                 return d.promise;
             } catch (err) {
+                console.log('OTHER ERROR: ' + err)
                 return $q.reject();
             }
 

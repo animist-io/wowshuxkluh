@@ -1,19 +1,27 @@
 describe('AnimistBluetoothAPI', function(){
 
-
     beforeEach(module('animist'));       // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
     beforeEach(module('ngCordovaMocks'));
 
-    var $scope, $q, $ble, uuids, Auto, Core, API, Beacons, AnimistAccount, $timeout, 
+    var $scope, $q, $timeout,  $ble, uuids, mockPgp, 
+        Auto, Core, API, PGP, Beacons, AnimistAccount, Constants,
         promise, error;
 
     var ethUtil = npm.ethUtil;
 
-
-    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBluetoothLE_, _$timeout_, 
-                              _AnimistBluetoothCore_, _AnimistBluetoothAuto_, _AnimistBluetoothAPI_, 
-                              _AnimistAccount_, _AnimistConstants_ ){
+    beforeEach(inject(function(
+            _$rootScope_, 
+            _$q_, 
+            _$cordovaBluetoothLE_, 
+            _$timeout_, 
+            _mockPgp_,
+            _AnimistBluetoothCore_, 
+            _AnimistBluetoothAuto_, 
+            _AnimistBluetoothAPI_, 
+            _AnimistAccount_,
+            _AnimistConstants_,
+            _AnimistPgp_ ){
      
         $scope = _$rootScope_;
         $ble = _$cordovaBluetoothLE_;
@@ -24,6 +32,8 @@ describe('AnimistBluetoothAPI', function(){
         Core = _AnimistBluetoothCore_;
         Auto = _AnimistBluetoothAuto_;
         API = _AnimistBluetoothAPI_;
+        PGP = _AnimistPgp_;
+        mockPgp = _mockPgp_;
 
         // AnimistAccount Mocks
         AnimistAccount = _AnimistAccount_;
@@ -377,65 +387,6 @@ describe('AnimistBluetoothAPI', function(){
             $ble.throwsSubscribe = true;
             error = { where : 'AnimistBluetoothCore:write: ' + uuids.getContractAddress, error : 0x01 };
             promise = API.getContractAddress();
-            $scope.$digest();
-            expect(promise.$$state.status).toEqual(2);
-            expect(promise.$$state.value).toEqual(error);
-        });
-    });
-
-    describe('verifyPresence', function(){
-
-        it('should subscribe to the verifyPresence uuid', function(){
-            spyOn(Core, 'write').and.callThrough();
-            API.verifyPresence();
-            $scope.$digest();
-            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuids.verifyPresence);
-        });
-
-        it('should resolve a transaction hash string on success', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.emulateTxHash = true;
-            promise = API.verifyPresence();
-            $timeout.flush();
-            expect(promise.$$state.status).toEqual(1);
-            expect(promise.$$state.value).toEqual($ble.mockTxHash);
-        });
-
-        it('should reject with error object on failure', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.throwsSubscribe = true;
-            error = { where : 'AnimistBluetoothCore:write: ' + uuids.verifyPresence, error : 0x01 };
-            promise = API.verifyPresence();
-            $scope.$digest();
-            expect(promise.$$state.status).toEqual(2);
-            expect(promise.$$state.value).toEqual(error);
-        });
-    });
-
-    describe('authAndSendTx', function(){
-
-        it('should subscribe to the verifyPresenceAndSend uuid', function(){
-            var expected = { pin: $ble.mockSignedMessage, tx: $ble.mockSignedTx };
-            spyOn(Core, 'write').and.callThrough();
-            API.verifyPresenceAndSendTx($ble.mockSignedTx);
-            $scope.$digest();
-            expect(Core.write).toHaveBeenCalledWith(expected, uuids.verifyPresenceAndSendTx);
-        });
-
-        it('should resolve a transaction hash string on success', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.emulateTxHash = true;
-            promise = API.verifyPresenceAndSendTx($ble.mockSignedTx);
-            $timeout.flush();
-            expect(promise.$$state.status).toEqual(1);
-            expect(promise.$$state.value).toEqual($ble.mockTxHash);
-        });
-
-        it('should reject with error object on failure', function(){
-            spyOn(Core, 'write').and.callThrough();
-            $ble.throwsSubscribe = true;
-            error = { where : 'AnimistBluetoothCore:write: ' + uuids.verifyPresenceAndSendTx, error : 0x01 };
-            promise = API.verifyPresenceAndSendTx($ble.mockSignedTx);
             $scope.$digest();
             expect(promise.$$state.status).toEqual(2);
             expect(promise.$$state.value).toEqual(error);

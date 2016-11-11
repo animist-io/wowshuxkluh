@@ -43,6 +43,7 @@ module.exports = function(config) {
          "tests/bleCore.spec.js",
          "tests/bleAuto.spec.js",
          "tests/bleAPI.spec.js",
+         "tests/bleAPIEncrypted.spec.js",
          "tests/pgp.spec.js",  
       ],
 

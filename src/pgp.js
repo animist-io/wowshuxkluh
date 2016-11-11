@@ -16,7 +16,8 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
 
     // Errors
     var codes = {
-        NOT_INITIALIZED: here + 'Cannot encrypt - no public key for node',
+        NOT_INITIALIZED: 'Cannot encrypt - no public key for node',
+        ENCRYPTION_LAYER_FAILED: 'openpgp threw an error'
     }
 
     /**
@@ -30,23 +31,24 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
      */
     self.encrypt = function(data){
         var options;
-    
+        var where = 'AnimistPgp:encrypt'
+
         if (!core.peripheral.publicKey){
-            return $q.reject(codes.NOT_INITIALIZED);
+            return $q.reject({where: where, error: codes.NOT_INITIALIZED});
         } 
-            
+
         try {      
             options = {
                 data: data,
                 publicKeys: npm.openpgp.key.readArmored(core.peripheral.publicKey).keys[0],
             };
-            return npm.openpgp.encrypt(options).then(function(cipher){ 
+            return $q.when(npm.openpgp.encrypt(options), function(cipher){
                 return cipher.data
-            }); 
+            });
 
         } catch (err) {
-            return $q.reject();
-        }    
+            $q.reject({where: where, error: codes.ENCRYPTION_LAYER_FAILED});
+        }
     }
 
     /**
@@ -61,18 +63,7 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
         var hkp = new npm.openpgp.HKP('https://pgp.mit.edu');
         var d = $q.defer();
         
-        hkp.lookup({ keyId: keyId })
-            .then(function(key){
-                d.resolve(key);
-                $rootScope.$apply();
-            })
-            .catch(function(err){
-                d.reject(err);
-                $rootScope.$apply();
-            })
-
-        return d.promise;
-        
+        return $q.when(hkp.lookup({ keyId: keyId }));
     }
 }    
 

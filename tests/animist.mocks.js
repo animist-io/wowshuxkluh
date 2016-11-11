@@ -146,6 +146,7 @@ angular.module('animistMocks', ['pgpKeystoreMocks'])
         self.mockCall = [self.mockAddress, self.mockData];
         self.mockVerifyPresenceAndSend = {pin: self.mockPin, tx: self.mockSignedTx};
         self.mockClientTxStatus = { verifyPresenceStatus: "success", verifyPresenceTxHash: self.mockTxHash, clientTxHash: self.mockTxHash }; 
+        self.mockMessage = 'hello';
         self.mockSignedMessage = '0xaaaaaaaaaaa';
         self.mockPresenceReceipt = {
             time: 1470937203535,
@@ -217,6 +218,12 @@ angular.module('animistMocks', ['pgpKeystoreMocks'])
             {status: 'subscribed', value: 0},
             {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockClientTxStatus))}
         ];
+
+        var messageRaw = [
+            {status: 'subscribed', value: 0},
+            {status: 'notify', value: self.encodeMock(JSON.stringify(self.mockMessage))}
+        ];
+
 
         // ------------------
         // ------ API ------- 
@@ -351,6 +358,11 @@ angular.module('animistMocks', ['pgpKeystoreMocks'])
                 $timeout(function(){ 
                     defer.notify(contractAddressRaw[0]);
                     defer.notify(contractAddressRaw[1]);
+                },0); 
+            } else if (self.emulateGetMessage){
+                $timeout(function(){ 
+                    defer.notify(messageRaw[0]);
+                    defer.notify(messageRaw[1]);
                 },0); 
             } else if (self.emulateGetClientTxStatus){
                 $timeout(function(){ 

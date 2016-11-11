@@ -363,6 +363,39 @@ describe('AnimistBluetoothAPI', function(){
             expect(promise.$$state.value).toEqual(error);
         });
     });
+
+    describe('getMessageWithConfirmation', function(){
+
+        it('should subscribe to the specified uuid', function(){
+            var uuid = 'E219B7F9-7BF3-4B03-8DB6-88D228922F40';
+            spyOn(Core, 'write').and.callThrough();
+            API.getMessageWithConfirmation(uuid);
+            $scope.$digest();
+            expect(Core.write).toHaveBeenCalledWith($ble.mockSignedMessage, uuid);
+        });
+
+        it('should resolve an address on success', function(){
+            var uuid = 'E219B7F9-7BF3-4B03-8DB6-88D228922F40';
+            spyOn(Core, 'write').and.callThrough();
+            $ble.emulateGetMessage = true;
+            promise = API.getMessageWithConfirmation(uuid);
+            $timeout.flush();
+            expect(promise.$$state.status).toEqual(1);
+            expect(promise.$$state.value).toEqual($ble.mockMessage);
+            $ble.emulateGetMessage = false;
+        });
+
+        it('should reject with error object on failure', function(){
+            var uuid = 'E219B7F9-7BF3-4B03-8DB6-88D228922F40';
+            spyOn(Core, 'write').and.callThrough();
+            $ble.throwsSubscribe = true;
+            error = { where : 'AnimistBluetoothCore:write: ' + uuid, error : 0x01 };
+            promise = API.getMessageWithConfirmation(uuid);
+            $scope.$digest();
+            expect(promise.$$state.status).toEqual(2);
+            expect(promise.$$state.value).toEqual(error);
+        });
+    });
 });
 
 

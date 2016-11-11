@@ -239,6 +239,30 @@ function AnimistBluetoothAPI(
         return d.promise;
     }
 
+    /**
+     * @ngdoc method
+     * @methodOf animist.service:AnimistBluetoothAPI
+     * @description  Gets message published at `uuid` for this client if contract has requested
+     *               this service from a whale-island node. Whale-island will print confirmation
+     *               of the read to contract. 
+     * @name  animist.service:AnimistBluetoothAPI.getMessageWithConfirmation 
+     * @return {Promise} Resolves string: message OR null, rejects with error object
+     */
+    self.getMessageWithConfirmation = function(uuid){
+        
+        var d = $q.defer();
+        
+        self.getPin().then(function(pin){
+            pin = user.sign(pin);
+            core.write(pin, uuid)
+                .then(function(res){ d.resolve(JSON.parse(res) ) })
+                .catch(function(err){ d.reject(err) })
+
+        }).catch(function(err){ d.reject(err)})
+
+        return d.promise;
+    }
+
 
     /**
      * @ngdoc method

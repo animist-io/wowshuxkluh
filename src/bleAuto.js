@@ -2,7 +2,6 @@ angular.module('animist').service("AnimistBluetoothAuto", AnimistBluetoothAuto);
 
 function AnimistBluetoothAuto($rootScope, $q, AnimistBluetoothCore, AnimistBluetoothAPI, AnimistAccount, AnimistConstants ){
 
-
     var self = this;
     var user = AnimistAccount;
     var core = AnimistBluetoothCore;

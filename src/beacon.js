@@ -2,59 +2,39 @@
 
 angular.module('animist').service("AnimistBeacons", AnimistBeacons);
 
-    function AnimistBeacons($rootScope, $q, $cordovaBeacon, AnimistBluetoothCore, AnimistBluetoothAuto ){
+    function AnimistBeacons(
+            $rootScope, 
+            $q, 
+            $cordovaBeacon, 
+            AnimistBluetoothCore, 
+            AnimistBluetoothAuto,
+            AnimistConstants ){
 
         var self = this;
-        var lock = false;
-        var regions = [];
         var core = AnimistBluetoothCore;
         var auto = AnimistBluetoothAuto;
+        var config = AnimistConstants;
+        var lock = false;
+        var regions = [];
 
-        // The set of uuids to monitor for
-        var uuids = [
-            "4F7C5946-87BB-4C50-8051-D503CEBA2F19" 
-            //"D4FB5D93-B1EF-42CE-8C08-CF11685714EB", //2
-            //"98983597-F322-4DC3-A36C-72052BF6D612", //3
-            //"8960D5AB-3CFA-46E8-ADE2-26A3FB462053", //4
-            //"458735FA-E270-4746-B73E-E0C88EA6BEE0", //5
-        ];
-
-        // ------------------------  Logger Utility --------------------------
-        var logger = function(msg, obj){
-            //Meteor.call('ping', msg + ' ' + JSON.stringify(obj));
-        }
-
-        // ------------------------  Public ---------------------------------
+        // -------------------------------------------  Public -----------------------------------------------
         
         self.initialized = false;
        
         /**
          * Registers app to listen for Animist beacons in background mode on iOS. 
          * @method initialize() 
-         * @return {promise} Resolves on success, rejects if user does not authorize.
+         * @param {String} authType (iOS 8+ only) Permission level of beacon monitoring to request ('always' OR 'whenInUse')
+         * @return {Promise} Resolves on success, rejects if user does not authorize.
          */
-        self.initialize = function(){
+        self.initialize = function( authType ){
             
-            var d = $q.defer();
-            var where = "AnimistBeacons:initialize";
-           
             // Return if initialized. Also beacons cannot run in browser + output is annoying in XCode.
-            if (self.initialized  ) { d.resolve(); return d; }
+            if (self.initialized) 
+                return $q.when();
 
-            // Init region array. Set device to wake app up when killed/backgrounded
-            setUpRegions();
-            $cordovaBeacon.requestAlwaysAuthorization();
-
-            // Monitor all uuids
-            angular.forEach(regions, function(region){
-                $cordovaBeacon.startMonitoringForRegion(region);
-            });
-
-            // Range for all regions
-            angular.forEach(regions, function(region){
-                $cordovaBeacon.startRangingBeaconsInRegion(region);
-            });
-
+            requestUserAuthorization( authType );
+        
             // Register handlers
             $rootScope.$on("$cordovaBeacon:didExitRegion", function(event, result){
                 onExit(result);
@@ -63,22 +43,133 @@ angular.module('animist').service("AnimistBeacons", AnimistBeacons);
                 onCapture(result);
             });
             
-            // Check authorization before resolving. 
-            $cordovaBeacon.getAuthorizationStatus().then(
-                function(status){ self.initialized = true; d.resolve()}, 
-                function(error){  self.initialized = false; d.reject()}
-            );
-            
-            return d;
+            return $q.all( [
+                self.addRequestableBeacon(config.platformBeaconUuid ),
+                self.userAuthorized(),
+                $cordovaBeacon.getAuthorizationStatus()
+            ])
+            .then(function(){ self.initialized = true })  
+            .catch(function(err){ self.initialized = false });
+        };
+
+        /**
+         * Adds a region to monitor and range for. 
+         * @param {String} uuid v4 uuid
+         * @return {Promise} Rejects if too many beacon regions are being monitored, resolves otherwise.
+        */
+        self.addRequestableBeacon = function( uuid ){
+
+            return self.getAllRequestableBeacons().then(function(regions){
+                if (regions.length < config.maxRequestableBeaconRegions ){
+                
+                    regions.push( $cordovaBeacon.createBeaconRegion('r_' + i, uuid, null, null, true));
+                    $cordovaBeacon.startMonitoringForRegion(region);
+                    $cordovaBeacon.startRangingBeaconsInRegion(region);
+                
+                } else return $q.reject();
+            });
+        };
+
+        /**
+         * Gets array of currently monitored requestable beacon regions
+         * @return {Promise} Resolves array of beacon regions or rejects with $cordovaBeacon error
+         */
+        self.getAllRequestableBeacons = function(){
+            var index;
+
+            return $cordovaBeacon.getMonitoredRegions().then(function(regions){
+                
+                // Find and exclude the platform beacon
+                index = regions.map(function(region){ return region.uuid; }).indexOf(config.platformBeaconUuid );
+
+                (index !== -1 )
+                    ? regions.splice( index, 1)
+                    : null
+
+                return regions;
+            });
         };
 
 
-        // setUpRegions(): initialize an array beaconRegion obj of all our possible uuid vals
-        function setUpRegions(){
-            for (var i = 0; i < uuids.length; i++){
-                regions.push( $cordovaBeacon.createBeaconRegion('r_' + i, uuids[i], null, null, true));
+        /**
+         * Stops monitoring and ranging for a specified requestable beacon. 
+         * @param  {String} uuid v4 iBeacon uuid
+         * @return {Promise} Rejects if unable to find uuid in currently monitored beacon set, resolves otherwise
+         */
+        self.clearRequestableBeacon = function( uuid ){
+            var index;
+            return self.getAllRequestableBeacons().then(function(){
+
+                index = regions.map(function(region){ return region.uuid; }).indexOf(uuid);
+                if (pos !== -1){
+                
+                    $cordovaBeacon.stopMonitoringForRegion(regions[index]);
+                    $cordovaBeacon.stopRangingBeaconsInRegion(regions[index]);
+                
+                } else return $q.reject()
+            });
+        }
+
+        /**
+         * Stops monitoring and ranging for ALL beacons EXCEPT the universal platform beacon
+         * @return {Promise} Rejects on $cordovaBeacon layer error.
+         */
+        self.clearAllRequestableBeacons = function(){
+
+            return $q.all( [
+                $cordovaBeacon.getMonitoredRegions(),
+                $cordovaBeacon.getRangedRegions()
+            ])
+            .then( function( results ){
+
+                angular.forEach( results[0], function(region){
+                    if (region.uuid !== config.platformBeaconUuid)
+                        $cordovaBeacon.stopMonitoringForRegion(region);
+                });
+
+                angular.forEach( results[1], function(region){
+                    if (region.uuid !== config.platformBeaconUuid)
+                        $cordovaBeacon.stopRangingBeaconsInRegion(region);
+                })
+            })
+        };
+
+        /**
+         * Clears all requestableBeacons (e.g. stops monitoring and ranging for them permanently), unregisters the auto callback,
+         * and resets bleCore (e.g. wipes the current core.peripheral object ) 
+         * @return {Promise} Resolves on successful reset, rejects with a $cordovaBeacon error otherwise.
+         */
+        self.reset = function(){
+            return self.clearAllRequestableBeacons().then(function(){
+                self.initialized = false;
+                core.reset();
+            })
+        };
+
+        /**
+         * iOS 8+ only: Checks to see if user actually authorized requested beacon monitoring permission.
+         * @return {Promise} Resolves if user authorization occured, rejects with NO_BEACON_AUTHORIZATION otherwise
+         */
+        self.userAuthorized = function(){
+            return $cordovaBeacon.getAuthorizationStatus().catch(function (error){
+                return $q.reject( config.NO_BEACON_AUTHORIZATION );
+            }) 
+        };
+
+
+        /**
+         * iOS 8+ only: Requests beacon detection permission from app user. 
+         * @param  {String} authType Either 'always' OR 'whenInUse' 
+         */
+        function requestUserAuthorization( authType ){
+            if (authType === undefined || authType === config.authBeaconDetectionAlways )
+                $cordovaBeacon.requestAlwaysAuthorization();
+            else if (authType === config.authBeaconDetectionWhenInUse ){
+                $cordovaBeacon.requestWhenInUseAuthorization();
             }
-        };
+        }
+
+        // -------------------------------------------  Private -----------------------------------------------
 
         /** 
          * Called when monitoring exits a region. 'Resets' AnimistBLE, making it possible to 
@@ -110,13 +201,16 @@ angular.module('animist').service("AnimistBeacons", AnimistBeacons);
 
             // THIS IS GIBBERISH
             if (beacons.length && !lock ){
-
                 lock = true;
-                
                 angular.forEach(beacons, function(beacon){
                     auto.listen(beacon.uuid, beacon.proximity);
                     lock = false;
                 });
             };
         };
+
+        // ----------------------------------- Development Utilities -----------------------------------------------
+        var logger = function(msg, obj){
+            //Meteor.call('ping', msg + ' ' + JSON.stringify(obj));
+        }
     };

@@ -61,8 +61,6 @@ function AnimistPgp($rootScope, $q, AnimistBluetoothCore ){
     */
     self.getPublicKeyFromMIT = function(keyId){
         var hkp = new npm.openpgp.HKP('https://pgp.mit.edu');
-        var d = $q.defer();
-        
         return $q.when(hkp.lookup({ keyId: keyId }));
     }
 }    

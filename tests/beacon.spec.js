@@ -1,7 +1,7 @@
 "use strict"
 var debug;
 
-describe('AnimistBeacons Service', function () {
+/*describe('AnimistBeacons Service', function () {
     
     beforeEach(module('animist'));      // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
@@ -162,4 +162,4 @@ describe('AnimistBeacons Service', function () {
         });
 
     });
-});
+});*/

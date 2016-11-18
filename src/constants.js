@@ -37,10 +37,22 @@ function AnimistConstants(){
         callTx : "4506C117-0A27-4D90-94A1-08BB81B0738F"
     };
 
+    //----------------------------------------------------------------------------------
+    // DEPRECATED: Here for unit tests pending refactor
     // Beacon uuid (key) mapped to server service uuid (val). Platform wide constant.
     this.serverServiceUUIDs = {
         "4F7C5946-87BB-4C50-8051-D503CEBA2F19" : "05DEE885-E723-438F-B733-409E4DBFA694",
     };
+    //-----------------------------------------------------------------------------------
+
+    // Whale-island node UUID constants
+    this.platformBeaconUuid = "4F7C5946-87BB-4C50-8051-D503CEBA2F19";
+    this.platformServerUuid = "05DEE885-E723-438F-B733-409E4DBFA694";
+
+    // Beacon Service constants
+    this.authBeaconDetectionAlways = 'always';
+    this.authBeaconDetectionWhenInUse = 'whenInUse';
+    this.maxRequestableBeaconRegions = 18;
 
     this.serverHexCodes = {
         "INVALID_JSON_IN_REQUEST":   0x02,

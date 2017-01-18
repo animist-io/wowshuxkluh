@@ -1,21 +1,21 @@
-"use strict"
+'use strict';
 var debug;
 
-/*describe('AnimistBeacons Service', function () {
-    
+/* describe('AnimistBeacons Service', function () {
+
     beforeEach(module('animist'));      // Animist
     beforeEach(module('animistMocks'));  // cordovaBluetoothBLE & cordovaBeacon
     beforeEach(module('ngCordovaMocks')); // ngCordova
 
     var $scope, $q, $cordovaBeacon, Core, Auto, Beacons, AnimistAccount, d;
 
-    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_, 
+    beforeEach(inject(function(_$rootScope_, _$q_, _$cordovaBeacon_, _AnimistBeacons_,
                                _AnimistBluetoothCore_, _AnimistBluetoothAuto_ ){
-        
+
         $scope = _$rootScope_;
         $cordovaBeacon = _$cordovaBeacon_;
         $q = _$q_;
-    
+
         Beacons = _AnimistBeacons_;
         Core = _AnimistBluetoothCore_;
         Auto = _AnimistBluetoothAuto_;
@@ -24,7 +24,7 @@ var debug;
     }));
 
     it('should initialize with the "initialized" flag equal to false', function(){
-        expect(Beacons.initialized).toEqual(false);    
+        expect(Beacons.initialized).toEqual(false);
     });
 
     describe('initialize()', function(){
@@ -35,12 +35,12 @@ var debug;
 
             Beacons.initialized = true;
             Beacons.initialize();
-            
+
             expect($cordovaBeacon.requestAlwaysAuthorization).not.toHaveBeenCalled();
 
             Beacons.initialized = false;
             Beacons.initialize();
-            
+
             expect($cordovaBeacon.requestAlwaysAuthorization).toHaveBeenCalled();
 
         });
@@ -52,7 +52,7 @@ var debug;
 
             expect($cordovaBeacon.createBeaconRegion).
                 toHaveBeenCalledWith('r_' + 0, "4F7C5946-87BB-4C50-8051-D503CEBA2F19", null, null, true)
-            
+
         })
 
         it('should start monitoring each of the regions', function(){
@@ -73,12 +73,11 @@ var debug;
             })
         });
 
-
         it('should set init. flag to true and resolve if user authorized beacon use', function(){
             var q;
 
             spyOn($cordovaBeacon, 'getAuthorizationStatus').and.callThrough();
-            
+
             q = Beacons.initialize();
             $scope.$digest();
 
@@ -89,7 +88,6 @@ var debug;
 
         it('should set init. flag to false, and reject if user forbids background beacon use', function(){
             var q;
-
 
             spyOn($cordovaBeacon, 'getAuthorizationStatus').and.callThrough();
             $cordovaBeacon.throwsError = true;
@@ -120,7 +118,7 @@ var debug;
 
             Beacons.initialize();
             $scope.$digest();
-            
+
         })
         it('should call BluetoothAuto.listen w/ beacon id & proximity', function(){
 
@@ -129,7 +127,7 @@ var debug;
 
             spyOn(Auto, 'listen').and.callThrough();
             $scope.$broadcast('$cordovaBeacon:didRangeBeaconsInRegion', mock_beacons);
-            
+
             $scope.$digest();
             expect(Auto.listen).toHaveBeenCalledWith(expected_uuid, expected_proximity);
         })
@@ -143,10 +141,10 @@ var debug;
         beforeEach(function(){
 
             mock_beacons = { region: { uuid: 'AAAAAAA' }};
-    
+
             Beacons.initialize();
             $scope.$digest();
-            
+
         })
 
         it('should reset the BluetoothCore connection', function(){
@@ -162,4 +160,4 @@ var debug;
         });
 
     });
-});*/
+}); */

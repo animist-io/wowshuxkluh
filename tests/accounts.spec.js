@@ -1,518 +1,436 @@
 // THIS THING IS GNARLY. AND SLOW.
 
-// Cannot use angular mocks. PouchDB promises are plain JS. To catch test failure, 
-// add expectations to the promise callbacks you don't intend to hit. DB should be 
-// destroyed per test because it will persist if chrome is live-reloading. 
+// Cannot use angular mocks. PouchDB promises are plain JS. To catch test failure,
+// add expectations to the promise callbacks you don't intend to hit. DB should be
+// destroyed per test because it will persist if chrome is live-reloading.
 
-// Note: Some failing tests do not clean up after themselves and will result in a 
-// cascade of failures across reloads . . . so start from the top fixing errors and 
-// restart chrome each time until there are no 'shouldnt reject'/'shouldnt succeed' errors. 
+// Note: Some failing tests do not clean up after themselves and will result in a
+// cascade of failures across reloads . . . so start from the top fixing errors and
+// restart chrome each time until there are no 'shouldnt reject'/'shouldnt succeed' errors.
 
-describe('AnimistAccount Service', function(){
-
-   var $scope, $q, $cordovaKeychain, $timeout, $window, pouchDB, AnimistAccount, names;
+describe('AnimistAccount Service', function () {
+  var $scope, $q, $cordovaKeychain, $timeout, $window, pouchDB, AnimistAccount, names;
 
    // Explicitly inject everything to avoid angular-mocks, so we can test non-angular promises.
-   beforeEach(function(){
-      
-      var $injector = angular.injector(['ng', 'ngCordovaMocks', 'animist']);
+  beforeEach(function () {
+    var $injector = angular.injector(['ng', 'ngCordovaMocks', 'animist']);
 
-      $scope = $injector.get('$rootScope');
-      $q = $injector.get('$q');
-      $timeout = $injector.get('$timeout');
-      $cordovaKeychain = $injector.get('$cordovaKeychain');
+    $scope = $injector.get('$rootScope');
+    $q = $injector.get('$q');
+    $timeout = $injector.get('$timeout');
+    $cordovaKeychain = $injector.get('$cordovaKeychain');
 
-      AnimistAccount = $injector.get('AnimistAccount');
-      names = AnimistAccount.getNames();
-   });
+    AnimistAccount = $injector.get('AnimistAccount');
+    names = AnimistAccount.getNames();
+  });
 
-   //-------------------------------------------------------------------------------------------------
-   // isInstalled()
-   //-------------------------------------------------------------------------------------------------
-   describe('isInstalled()', function(){
+  // -------------------------------------------------------------------------------------------------
+  // isInstalled()
+  // -------------------------------------------------------------------------------------------------
+  describe('isInstalled()', function () {
+    var db;
 
-      var db;
+    // Initialize and destroy DB each test
+    beforeEach(function () {
+      db = new PouchDB(names.DB, {adapter: 'websql'});
+    });
 
-      // Initialize and destroy DB each test
-      beforeEach(function(){
-         db = new PouchDB(names.DB, {adapter: "websql"});
-      });
+    afterEach(function (done) {
+      $q.when(db.destroy()).finally(done);
+    });
 
-      afterEach(function(done){
-         $q.when(db.destroy()).finally(done);
-      });
+    it('should set installed flag to true and resolve if key & keystore are saved', function (done) {
+      var promise, expected = 'abcd';
 
-      it('should set installed flag to true and resolve if key & keystore are saved', function(done){
+      // Setup: Good db, good key
+      $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
+      $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
+      $scope.$digest();
 
-         var promise, expected = 'abcd'; 
-      
-         // Setup: Good db, good key
-         $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
-         $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
-         $scope.$digest();
-
-         // Should succeed
-         AnimistAccount.isInstalled().then(function(){
-
-            expect(AnimistAccount.installed).toBe(true);   
-         })
-         .catch(function(){
-            expect(true).toEqual('Should not reject');  
-         })
-         .finally(done);
-      
-         $scope.$digest();
-
-      });
-
-      it('should set installed flag to false if keychain is missing users key and reject', function(done){
-
-         var promise,  expected = 'abcd'; 
-      
-         // Setup: Good db, bad key.
-         $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
-         $cordovaKeychain.setForKey('bad_name', 'bad_service', expected);
-         $scope.$digest();
-
-         // Should error
-         AnimistAccount.isInstalled().then(function(){
-            expect(true).toEqual('Should not succeed');
-         })
-         .catch(function(){
-            expect(AnimistAccount.installed).toBe(false);
-            
-         })
-         .finally(done);
-         
-         $scope.$digest();
-
+      // Should succeed
+      AnimistAccount.isInstalled().then(function () {
+        expect(AnimistAccount.installed).toBe(true);
       })
+      .catch(function () {
+        expect(true).toEqual('Should not reject');
+      })
+      .finally(done);
 
-      it('should set installed flag to false if DB is missing keystore and reject', function(done){
+      $scope.$digest();
+    });
 
-         var promise,  expected = 'abcd'; 
-      
-         // Setup: Bad db, good key.
-         $q.when(db.put({'_id': 'bad_name', 'val': 'someVal'}));
-         $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
-         $scope.$digest();
+    it('should set installed flag to false if keychain is missing users key and reject', function (done) {
+      var promise, expected = 'abcd';
 
-         // Should error
-         AnimistAccount.isInstalled().then(function(){
-            expect(true).toEqual('Should not succeed');
+      // Setup: Good db, bad key.
+      $q.when(db.put({'_id': names.DB_KEYSTORE, 'val': 'someVal'}));
+      $cordovaKeychain.setForKey('bad_name', 'bad_service', expected);
+      $scope.$digest();
+
+      // Should error
+      AnimistAccount.isInstalled().then(function () {
+        expect(true).toEqual('Should not succeed');
+      })
+      .catch(function () {
+        expect(AnimistAccount.installed).toBe(false);
+      })
+      .finally(done);
+
+      $scope.$digest();
+    });
+
+    it('should set installed flag to false if DB is missing keystore and reject', function (done) {
+      var promise, expected = 'abcd';
+
+      // Setup: Bad db, good key.
+      $q.when(db.put({'_id': 'bad_name', 'val': 'someVal'}));
+      $cordovaKeychain.setForKey(names.KEY_USER, names.KEY_SERVICE, expected);
+      $scope.$digest();
+
+      // Should error
+      AnimistAccount.isInstalled().then(function () {
+        expect(true).toEqual('Should not succeed');
+      })
+      .catch(function () {
+        expect(AnimistAccount.installed).toBe(false);
+      })
+      .finally(done);
+
+      $scope.$digest();
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------------
+  // install()
+  // -------------------------------------------------------------------------------------------------
+  describe('install(password)', function () {
+    var password = 'password';
+
+    beforeEach(function (done) {
+      AnimistAccount.install(password).then(done);
+    });
+
+    afterEach(function (done) {
+      $q.when(AnimistAccount.getDB().destroy()).finally(done);
+    });
+
+    it('should save the users password in the keychain', function () {
+      var kc;
+
+      kc = $cordovaKeychain.keychains;
+      expect(kc[names.KEY_SERVICE][names.KEY_USER]).toEqual(password);
+    });
+
+    it('should save the keystore and one address to the database', function (done) {
+      var db, keystore, address, saved_address;
+      db = AnimistAccount.getDB();
+
+      // Fetch expected saves from DB
+      $q.all([$q.when(db.get(names.DB_KEYSTORE)),
+        $q.when(db.get(names.DB_ADDRESS))])
+
+        // Deserialize keystore, extract address from it and compare
+        // to saved address. QED.
+        .then(function (results) {
+          keystore = lightwallet.keystore.deserialize(results[0].val);
+          address = results[1].val;
+          saved_address = keystore.getAddresses()[0];
+          expect(address).toEqual(saved_address);
+        })
+        .catch(function () {
+          expect(true).toEqual('Should not reject');
+        })
+        .finally(done);
+    });
+
+    it('should set installed & initialized flags to true on success', function () {
+      expect(AnimistAccount.installed).toBe(true);
+      expect(AnimistAccount.initialized).toBe(true);
+    });
+  });
+
+  describe('install() (Failures)', function () {
+    it('should clear resources & reject on failure', function (done) {
+      var db, password = 'Xdkklwlwmmmm';
+
+      // Mock keychain failure
+      $cordovaKeychain.setForKey = function (a, b, c) { return $q.reject('failed'); };
+
+      AnimistAccount.install(password).then(function () {
+        expect(true).toEqual('Should not succeed');
+
+      // DB should be destroyed
+      }).catch(function (fail) {
+        db = AnimistAccount.getDB();
+        expect(db._docCount).toEqual(-1);
+        expect(db._destroyed).toEqual(true);
+      }).finally(function () {
+        $q.when(db.destroy()).finally(done);
+      });
+    });
+
+    it('should reject with error if there is no password', function (done) {
+      var codes = AnimistAccount.getCodes();
+
+      // No password
+      AnimistAccount.install().catch(function (e) {
+        expect(e).toEqual(codes.BAD_PASSWORD);
+      }).finally(done);
+    });
+
+    it('should reject with error if password is malformed', function (done) {
+      var codes = AnimistAccount.getCodes();
+
+      // Boolean password
+      AnimistAccount.install(true).catch(function (e) {
+        expect(e).toEqual(codes.BAD_PASSWORD);
+      }).finally(done);
+    });
+
+    it('should reject w/ EXISTS error if already installed', function (done) {
+      var promise, db, codes;
+
+      codes = AnimistAccount.getCodes();
+      AnimistAccount.installed = true;
+
+      // Should exist
+      AnimistAccount.install('password').catch(function (e) {
+        expect(e).toEqual(codes.EXISTS);
+      }).finally(done);
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------------
+  // load()
+  // -------------------------------------------------------------------------------------------------
+  describe('load()', function () {
+    it('should load account assets & set initialized flag to true', function (done) {
+      var msg, current_address, signing_address, expected_address, signed, wallet;
+
+      AnimistAccount.install('secret').then(function () {
+        // Setup: remember address then erase everything.
+        expected_address = AnimistAccount.getCurrentAccount();
+        wallet = lightwallet.signing;
+        msg = 'should work';
+
+        AnimistAccount.clearPrivate();
+
+        // Show everything loaded & address persisted by signing and recovering,
+        AnimistAccount.load().then(function () {
+          // This signs w/ current address by default
+          signed = AnimistAccount.sign(msg);
+
+          signing_address = wallet.recoverAddress(msg, signed.v, signed.r, signed.s);
+          current_address = AnimistAccount.getCurrentAccount();
+
+          expect(signing_address.toString('hex')).toEqual(expected_address);
+          expect(current_address).toEqual(expected_address);
+
+          expect(AnimistAccount.initialized).toBe(true);
+        })
+        .catch(function (err) {
+          expect(true).toEqual('Shouldnt reject');
+        })
+        .finally(function () {
+          $q.when(AnimistAccount.getDB().destroy()).finally(done);
+        });
+      });
+    });
+
+    it('should reject with "BAD KEY" if derived key is incorrect', function (done) {
+      var kc, codes;
+      codes = AnimistAccount.getCodes();
+
+      AnimistAccount.install('secret').then(function () {
+        // Corrupt users password & clear everything
+        kc = $cordovaKeychain.keychains;
+        kc[names.KEY_SERVICE][names.KEY_USER] = 'NOT_secret';
+
+        AnimistAccount.clearPrivate();
+
+        // Should error
+        AnimistAccount.load().then(function () {
+          expect(true).toEqual('Shouldnt succeed');
+        })
+        .catch(function (error) {
+          expect(error).toEqual(codes.BAD_KEY);
+        }).finally(function () {
+          $q.when(AnimistAccount.getDB().destroy()).finally(done);
+        });
+      });
+    });
+
+    it('should reject w/ NOT_INSTALLED if installation hasnt been verified', function () {
+      var promise;
+      var codes = AnimistAccount.getCodes();
+
+      // No installation
+      promise = AnimistAccount.load();
+      $scope.$digest();
+
+      expect(promise.$$state.status).toEqual(2);
+      expect(promise.$$state.value).toEqual(codes.NOT_INSTALLED);
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------------
+  // getCurrentAccount();
+  // -------------------------------------------------------------------------------------------------
+  describe('getCurrentAccount()', function () {
+    it('should return the address of the currently selected account', function (done) {
+      var account;
+
+      AnimistAccount.install('password').then(function () {
+        // Verify that currentAccount and DB value are the same
+        $q.when(AnimistAccount.getDB().get(names.DB_ADDRESS))
+         .then(function (record) {
+           account = AnimistAccount.getCurrentAccount();
+           expect(account).toEqual(record.val);
          })
-         .catch(function(){
-            expect(AnimistAccount.installed).toBe(false);
+         .catch(function (err) {
+           console.log(err);
+           expect(true).toEqual('Shouldnt reject db.get');
          })
-         .finally(done);
-         
-         $scope.$digest();
-
-      });
-   });
-
-   //-------------------------------------------------------------------------------------------------
-   // install()
-   //-------------------------------------------------------------------------------------------------
-   describe('install(password)', function(){
-
-      var password = 'password';
-
-      beforeEach(function(done){
-         AnimistAccount.install(password).then(done);
-      });
-
-      afterEach(function(done){
-         $q.when(AnimistAccount.getDB().destroy()).finally(done);
-      });
-
-      it('should save the users password in the keychain', function(){
-
-         var kc;
-
-         kc = $cordovaKeychain.keychains;
-         expect(kc[names.KEY_SERVICE][names.KEY_USER]).toEqual(password);
-         
-      });
-
-      it('should save the keystore and one address to the database', function(done){
-
-         var db, keystore, address, saved_address;
-
-         db = AnimistAccount.getDB();
-         
-         // Fetch expected saves from DB
-         $q.all([$q.when(db.get(names.DB_KEYSTORE)),
-                 $q.when(db.get(names.DB_ADDRESS))])
-
-         // Deserialize keystore, extract address from it and compare 
-         // to saved address. QED. 
-         .then(function(results){
-
-            keystore = lightwallet.keystore.deserialize(results[0].val);
-            address = results[1].val;
-            saved_address = keystore.getAddresses()[0];
-            expect(address).toEqual(saved_address);
-         })
-         .catch(function(){
-            expect(true).toEqual('Should not reject');
-         })
-         .finally(done);
-          
-      });
-
-      it('should set installed & initialized flags to true on success', function(){
-
-         expect(AnimistAccount.installed).toBe(true);
-         expect(AnimistAccount.initialized).toBe(true);
-         
-      });
-
-   });
-
-   describe('install() (Failures)', function(){
-
-      it('should clear resources & reject on failure', function(done){
-
-         var db, password = 'Xdkklwlwmmmm';
-
-         // Mock keychain failure
-         $cordovaKeychain.setForKey = function(a, b, c){ return $q.reject('failed')}
-
-         AnimistAccount.install(password).then( function(){
-
-            expect(true).toEqual('Should not succeed');
-         
-         // DB should be destroyed
-         }).catch(function(fail){
-               
-            db = AnimistAccount.getDB();
-            expect(db._docCount).toEqual(-1);
-            expect(db._destroyed).toEqual(true);
-
-         }).finally(function(){
-            $q.when(db.destroy()).finally(done);
+         .finally(function () {
+           $q.when(AnimistAccount.getDB().destroy()).finally(done);
          });
+      }).catch(function () {
+        expect(true).toEqual('Shouldnt reject installation');
+        done();
       });
+    });
 
-      it ('should reject with error if there is no password', function(done){
+    it('should return undefined if service not initialized', function () {
+      expect(AnimistAccount.getCurrentAccount()).toBe(undefined);
+    });
+  });
 
-         var codes = AnimistAccount.getCodes();
+  // -------------------------------------------------------------------------------------------------
+  // listAccounts();
+  // -------------------------------------------------------------------------------------------------
+  describe('listAccounts()', function () {
+    it('should return an array of available accounts', function (done) {
+      var expected_address, accounts;
 
-         // No password
-         AnimistAccount.install().catch(function(e){
-         
-            expect(e).toEqual(codes.BAD_PASSWORD);
-         
-         }).finally(done);
+      AnimistAccount.install('password').then(function () {
+        expected_address = AnimistAccount.getCurrentAccount();
+        accounts = AnimistAccount.listAccounts();
+        expect(accounts.length).toEqual(1);
+        expect(accounts[0]).toEqual(expected_address);
+      }).catch(function () {
+        expect(true).toEqual('Shouldnt reject installation');
+      }).finally(function () {
+        $q.when(AnimistAccount.getDB().destroy()).finally(done);
       });
+    });
 
-      it ('should reject with error if password is malformed', function(done){
+    it('should return undefined if service not initialized', function () {
+      expect(AnimistAccount.getCurrentAccount()).toBe(undefined);
+    });
+  });
 
-         var codes = AnimistAccount.getCodes();
+  // -------------------------------------------------------------------------------------------------
+  // generateAccount();
+  // -------------------------------------------------------------------------------------------------
+  describe('generateAccount()', function () {
+    it('should generate a new account address in the keystore', function (done) {
+      var initial_length, new_length;
 
-         // Boolean password
-         AnimistAccount.install(true).catch(function(e){
-         
-            expect(e).toEqual(codes.BAD_PASSWORD);
-         
-         }).finally(done);
-         
+      AnimistAccount.install('password').then(function () {
+        initial_length = AnimistAccount.listAccounts().length;
+        AnimistAccount.generateAccount();
+        new_length = AnimistAccount.listAccounts().length;
+        expect(initial_length).toEqual(1);
+        expect(new_length).toEqual(2);
+      }).catch(function () {
+        expect(true).toEqual('Shouldnt reject installation');
+      }).finally(function () {
+        $q.when(AnimistAccount.getDB().destroy()).finally(done);
       });
+    });
+  });
 
-      it('should reject w/ EXISTS error if already installed', function(done){
+  // -------------------------------------------------------------------------------------------------
+  // selectAccount();
+  // -------------------------------------------------------------------------------------------------
+  describe('selectAccount(address)', function () {
+    it('should set address param as current account address and save this state to the DB', function (done) {
+      var initial_account, new_account, current_account, saved_account, db;
 
-         var promise, db, codes;
+      AnimistAccount.install('password').then(function () {
+        db = AnimistAccount.getDB();
+        initial_account = AnimistAccount.listAccounts()[0];
 
-         codes = AnimistAccount.getCodes();
-         AnimistAccount.installed = true;
+        AnimistAccount.generateAccount();
+        new_account = AnimistAccount.listAccounts()[1];
 
-         // Should exist
-         AnimistAccount.install('password').catch(function(e){
-            
-            expect(e).toEqual(codes.EXISTS);
-         
-         }).finally(done);
-      });
-   });
+        // Sanity check
+        expect(initial_account).not.toEqual(new_account);
 
-   //-------------------------------------------------------------------------------------------------
-   // load()
-   //-------------------------------------------------------------------------------------------------
-   describe('load()', function(){
+        // Check loaded and saved value of address
+        AnimistAccount.selectAccount(new_account).then(function () {
+          $q.when(db.get(names.DB_ADDRESS))
 
-      it('should load account assets & set initialized flag to true', function(done){
-
-         var msg, current_address, signing_address, expected_address, signed, wallet;
-
-         AnimistAccount.install('secret').then(function(){
-
-            // Setup: remember address then erase everything.
-            expected_address = AnimistAccount.getCurrentAccount();
-            wallet = lightwallet.signing;
-            msg = 'should work';
-
-            AnimistAccount.clearPrivate();
-
-            // Show everything loaded & address persisted by signing and recovering, 
-            AnimistAccount.load().then(function(){
-
-               // This signs w/ current address by default
-               signed = AnimistAccount.sign(msg);
-            
-               signing_address = wallet.recoverAddress(msg, signed.v, signed.r, signed.s);
-               current_address = AnimistAccount.getCurrentAccount();
-
-               expect(signing_address.toString('hex')).toEqual(expected_address);
-               expect(current_address).toEqual(expected_address);
-
-               expect(AnimistAccount.initialized).toBe(true);
-
-            })
-            .catch( function(err){
-               console.log(err);
-               expect(true).toEqual('Shouldnt reject');
-            })
-            .finally(function(){
-                  $q.when(AnimistAccount.getDB().destroy()).finally(done);
-            });
-         })
-
-      });
-
-      it('should reject with "BAD KEY" if derived key is incorrect', function(done){
-
-         var kc, codes;
-         codes = AnimistAccount.getCodes();
-
-         AnimistAccount.install('secret').then(function(){
-
-            // Corrupt users password & clear everything
-            kc = $cordovaKeychain.keychains;
-            kc[names.KEY_SERVICE][names.KEY_USER] = 'NOT_secret';
-            
-            AnimistAccount.clearPrivate();
-
-            // Should error
-            AnimistAccount.load().then(function(){
-               expect(true).toEqual('Shouldnt succeed');
-            })
-            .catch(function(error){
-               expect(error).toEqual(codes.BAD_KEY);
-            
-            }).finally(function(){
-                  $q.when(AnimistAccount.getDB().destroy()).finally(done);
-            });
-         })
-      })
-
-
-      it('should reject w/ NOT_INSTALLED if installation hasnt been verified', function(){
-         
-         var promise;
-         var codes = AnimistAccount.getCodes();
-
-         // No installation
-         promise = AnimistAccount.load();
-         $scope.$digest();
-
-         expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(codes.NOT_INSTALLED);
-
-      })
-   })
-
-   //-------------------------------------------------------------------------------------------------
-   // getCurrentAccount();
-   //-------------------------------------------------------------------------------------------------
-   describe('getCurrentAccount()', function(){
-
-      it('should return the address of the currently selected account', function(done){
-         var account;
-
-         AnimistAccount.install('password').then(function(){
-
-            // Verify that currentAccount and DB value are the same
-            $q.when(AnimistAccount.getDB().get(names.DB_ADDRESS))
-               
-               .then(function(record){
-                  account = AnimistAccount.getCurrentAccount();
-                  expect(account).toEqual(record.val);
-               })
-               .catch(function(err){
-                  console.log(err);
-                  expect(true).toEqual('Shouldnt reject db.get');
-               })
-               .finally(function(){
-                  $q.when(AnimistAccount.getDB().destroy()).finally(done);
+               .then(function (record) {
+                 current_account = AnimistAccount.getCurrentAccount();
+                 saved_account = record.val;
+                 expect(new_account).toEqual(current_account);
+                 expect(new_account).toEqual(saved_account);
+               }).catch(function () {
+                 expect(true).toEqual('Shouldnt reject DB get');
+               }).finally(function () {
+                 $q.when(AnimistAccount.getDB().destroy()).finally(done);
                });
-            
-         }).catch(function(){
-            expect(true).toEqual('Shouldnt reject installation');
-            done();
-         });
-      });
-
-      it('should return undefined if service not initialized', function(){
-         expect(AnimistAccount.getCurrentAccount()).toBe(undefined);
+        })
+        .catch(function () {
+          expect(true).toEqual('Shouldnt reject on select');
+          done();
+        });
       })
-   });
-
-   //-------------------------------------------------------------------------------------------------
-   // listAccounts();
-   //-------------------------------------------------------------------------------------------------
-   describe('listAccounts()', function(){
-
-      it('should return an array of available accounts', function(done){
-         
-         var expected_address, accounts;
-
-         AnimistAccount.install('password').then(function(){
-
-            expected_address = AnimistAccount.getCurrentAccount();
-            accounts = AnimistAccount.listAccounts();
-
-            expect(accounts.length).toEqual(1);
-            expect(accounts[0]).toEqual(expected_address);
-         
-         }).catch( function(){
-            expect(true).toEqual('Shouldnt reject installation')
-
-         }).finally(function(){
-            $q.when(AnimistAccount.getDB().destroy()).finally(done);
-         })
-
+      .catch(function () {
+        expect(true).toEqual('Shouldnt reject installation');
+        done();
       });
+    });
 
-      it('should return undefined if service not initialized', function(){
-         expect(AnimistAccount.getCurrentAccount()).toBe(undefined);
-      })
+    it('should reject w/ ADDRESS_DNE if address param not found in keystore', function () {
+      var promise;
 
-   });
-
-   //-------------------------------------------------------------------------------------------------
-   // generateAccount();
-   //-------------------------------------------------------------------------------------------------
-   describe('generateAccount()', function(){
-
-      it('should generate a new account address in the keystore', function(done){
-         
-         var initial_length, new_length;
-
-         AnimistAccount.install('password').then(function(){
-
-            initial_length = AnimistAccount.listAccounts().length;
-   
-            AnimistAccount.generateAccount();
-            new_length = AnimistAccount.listAccounts().length;
-
-            expect(initial_length).toEqual(1);
-            expect(new_length).toEqual(2);
-         
-         }).catch( function(){
-            expect(true).toEqual('Shouldnt reject installation')
-
-         }).finally(function(){
-            $q.when(AnimistAccount.getDB().destroy()).finally(done);
-         })
-
+      AnimistAccount.install('password').then(function () {
+        promise = AnimistAccount.selectAccount('does_not_exist');
+        $scope.$digest();
+        expect(promise.$$state.status).toEqual(2);
+        expect(promise.$$state.value).toEqual(codes.ADDRESS_DNE);
+      }).catch(function () {
+        expect(true).toEqual('Shouldnt reject installation');
+      }).finally(function () {
+        $q.when(AnimistAccount.getDB().destroy()).finally(done);
       });
+    });
 
-   });
-   
-   //-------------------------------------------------------------------------------------------------
-   // selectAccount();
-   //-------------------------------------------------------------------------------------------------
-   describe('selectAccount(address)', function(){
+    it('should reject w/ BAD_ADDRESS if address param is missing or malformed ', function () {
+      var promise, codes = AnimistAccount.getCodes();
 
-      it('should set address param as current account address and save this state to the DB', function(done){
+      // Not initialized;
+      promise = AnimistAccount.selectAccount('dkdklsja;ljke');
 
-         var initial_account, new_account, current_account, saved_account, db;
+      $scope.$digest();
+      expect(promise.$$state.status).toEqual(2);
+      expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
 
-         AnimistAccount.install('password').then(function(){
+      // Missing param
+      promise = AnimistAccount.selectAccount();
 
-            db = AnimistAccount.getDB();
-            initial_account = AnimistAccount.listAccounts()[0];
+      $scope.$digest();
+      expect(promise.$$state.status).toEqual(2);
+      expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
 
-            AnimistAccount.generateAccount();
-            new_account = AnimistAccount.listAccounts()[1];
+      // Non-string param
+      promise = AnimistAccount.selectAccount({address: 'kdkdklslsl'});
 
-            // Sanity check
-            expect(initial_account).not.toEqual(new_account);
-
-            // Check loaded and saved value of address
-            AnimistAccount.selectAccount(new_account).then(function(){
-               $q.when(db.get(names.DB_ADDRESS))
-
-               .then(function(record){
-                  
-                  current_account = AnimistAccount.getCurrentAccount();
-                  saved_account = record.val;
-                  expect(new_account).toEqual(current_account);
-                  expect(new_account).toEqual(saved_account);
-
-               }).catch(function(){
-                  expect(true).toEqual('Shouldnt reject DB get');
-
-               }).finally(function(){
-                  $q.when(AnimistAccount.getDB().destroy()).finally(done);
-               })
-            })
-            .catch(function(){
-               expect(true).toEqual('Shouldnt reject on select');
-               done();
-            });
-         })   
-         .catch(function(){
-            expect(true).toEqual('Shouldnt reject installation')
-            done();
-         });
-
-      });
-
-      it('should reject w/ ADDRESS_DNE if address param not found in keystore', function(){
-         var promise;
-
-         AnimistAccount.install('password').then(function(){
-
-            promise = AnimistAccount.selectAccount('does_not_exist');   
-            $scope.$digest();
-            expect(promise.$$state.status).toEqual(2);
-            expect(promise.$$state.value).toEqual(codes.ADDRESS_DNE);
-         
-         }).catch( function(){
-            expect(true).toEqual('Shouldnt reject installation')
-
-         }).finally(function(){
-            $q.when(AnimistAccount.getDB().destroy()).finally(done);
-         })
-      });
-
-      it('should reject w/ BAD_ADDRESS if address param is missing or malformed ', function(){
-         var promise, codes = AnimistAccount.getCodes();
-
-         // Not initialized;
-         promise = AnimistAccount.selectAccount('dkdklsja;ljke');
-
-         $scope.$digest();
-         expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
-
-         // Missing param
-         promise = AnimistAccount.selectAccount();
-         
-         $scope.$digest();
-         expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
-
-         // Non-string param
-         promise = AnimistAccount.selectAccount({address: 'kdkdklslsl'});
-         
-         $scope.$digest();
-         expect(promise.$$state.status).toEqual(2);
-         expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
-
-      });
-
-   });
+      $scope.$digest();
+      expect(promise.$$state.status).toEqual(2);
+      expect(promise.$$state.value).toEqual(codes.BAD_ADDRESS);
+    });
+  });
 });

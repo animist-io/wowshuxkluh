@@ -1,6 +1,7 @@
 # Specifies intentionally untracked files to ignore when using Git
 # http://git-scm.com/docs/gitignore
 
+npm-debug.log
 node_modules/
 bower_components/
 lib/eth-lightwallet

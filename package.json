@@ -22,7 +22,7 @@
     "eslint-config-mocha": "0.0.0",
     "eslint-config-standard": "^6.2.1",
     "eslint-plugin-angular": "^1.6.1",
-    "eslint-plugin-mocha": "^4.8.0",
+    "eslint-plugin-mocha": "^5.2.0",
     "eslint-plugin-promise": "^3.4.0",
     "eslint-plugin-standard": "^2.0.1",
     "ethereumjs-util": "^5.0.1",
